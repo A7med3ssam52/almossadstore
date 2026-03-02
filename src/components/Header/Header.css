@@ -1,0 +1,98 @@
+.site-header {
+    width: 100%;
+}
+
+.top-bar {
+    background-color: var(--primary);
+    color: var(--white);
+    padding: 8px 0;
+    font-size: 14px;
+}
+
+.lang-switch {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.cart-widget {
+    margin-right: 20px;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.cart-count {
+    background-color: var(--accent);
+    color: var(--black);
+    padding: 0 6px;
+    border-radius: 50%;
+    font-weight: bold;
+}
+
+.user-account {
+    gap: 8px;
+    cursor: pointer;
+}
+
+.main-header {
+    background-color: var(--primary);
+    padding: 15px 0 25px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo-text {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--white);
+    line-height: 1;
+    display: block;
+}
+
+.logo-sub {
+    font-size: 14px;
+    color: var(--secondary);
+    font-weight: 500;
+    display: block;
+}
+
+.header-search {
+    flex: 1;
+    max-width: 700px;
+    margin: 0 40px;
+}
+
+.search-box {
+    background: var(--white);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    height: 45px;
+}
+
+.search-box input {
+    flex: 1;
+    border: none;
+    padding: 0 15px;
+    font-family: inherit;
+    font-size: 16px;
+    outline: none;
+}
+
+.search-btn {
+    background-color: #004d4a;
+    color: var(--white);
+    padding: 0 25px;
+    height: 100%;
+    font-weight: bold;
+    transition: var(--transition);
+}
+
+.search-btn:hover {
+    background-color: #003634;
+}
+
+@media (max-width: 768px) {
+    .header-search {
+        display: none;
+    }
+}
