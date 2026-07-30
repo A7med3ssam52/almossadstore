@@ -1,42 +1,156 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { getProducts } from '@/services/supabase/inventoryService';
+import { formatPrice } from '@/utils/formatters';
+import { Star, ShoppingBag, Eye } from 'lucide-react';
 import './FlashSale.css';
 
-const ProductCard = ({ product }) => (
-    <div className="product-card">
-        <div className="card-image-wrapper">
-            <img src={product.img} alt={product.name} />
-            {product.discount && <span className="discount-badge">-{product.discount}%</span>}
-            <span className="brand-badge">{product.brand}</span>
-        </div>
-        <div className="card-info">
-            <h3 className="product-name">{product.name}</h3>
-            <div className="price-row flex">
-                <span className="current-price">{product.price} جنيه</span>
-                {product.oldPrice && <span className="old-price">{product.oldPrice} جنيه</span>}
-            </div>
-            <p className="brand-name">{product.brand}</p>
-        </div>
-    </div>
-);
+const PLACEHOLDER_IMAGE = 'https://placehold.co/600x600/f1f5f9/94a3b8?text=%D8%A2%D9%84+%D9%85%D8%B3%D8%B9%D8%AF';
 
-const FlashSale = () => {
-    const products = [
-        { name: 'ثلاجة شارب 2 باب 450 لتر', price: '25,000', oldPrice: '28,000', discount: '10', brand: 'شارب', img: 'https://m.media-amazon.com/images/I/41Dq9Zl6nQL._AC_SL1000_.jpg' },
-        { name: 'ثلاجة شارب انفرتر 530 لتر', price: '32,000', oldPrice: '35,000', discount: '8', brand: 'شارب', img: 'https://m.media-amazon.com/images/I/41Dq9Zl6nQL._AC_SL1000_.jpg' },
-        { name: 'ميكروويف شارب 25 لتر', price: '6,500', oldPrice: '7,500', discount: '13', brand: 'شارب', img: 'https://m.media-amazon.com/images/I/61k88L-47ML._AC_SL1500_.jpg' },
-        { name: 'قفل باب ذكي ليزن', price: '4,200', oldPrice: '5,000', discount: '16', brand: 'ليزن', img: 'https://m.media-amazon.com/images/I/51A9A9X+XPL._AC_SL1000_.jpg' },
-    ];
+export const ProductCard = ({ product }) => {
+    const [hovered, setHovered] = useState(false);
+    const mainImage = (product.images && product.images.length > 0)
+        ? product.images[0]
+        : PLACEHOLDER_IMAGE;
+
+    const isOutOfStock = product.stock_quantity === 0;
+    const hasDiscount = product.discount > 0;
+    const discountedPrice = hasDiscount
+        ? product.base_price * (1 - product.discount / 100)
+        : null;
 
     return (
-        <section className="flash-sale-section">
+        <Link
+            to={`/product/${product.id}`}
+            className="pc-card"
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            style={{ textDecoration: 'none' }}
+        >
+            {/* Image Area */}
+            <div className="pc-img-wrap">
+                <img
+                    src={mainImage}
+                    alt={product.name}
+                    className={`pc-img ${hovered ? 'pc-img-zoom' : ''}`}
+                />
+
+                {/* Gradient Overlay on hover */}
+                <div className={`pc-overlay ${hovered ? 'pc-overlay-visible' : ''}`} />
+
+                {/* Badges top-right */}
+                <div className="pc-badges-right">
+                    {hasDiscount && (
+                        <span className="pc-badge pc-badge-discount">-{product.discount}%</span>
+                    )}
+                    {product.is_featured && (
+                        <span className="pc-badge pc-badge-featured">
+                            <Star size={12} fill="currentColor" strokeWidth={0} />
+                            مميز
+                        </span>
+                    )}
+                </div>
+
+                {/* Category badge top-left */}
+                {product.categories?.name && (
+                    <span className="pc-cat-badge">{product.categories.name}</span>
+                )}
+
+                {/* Out of stock */}
+                {isOutOfStock && (
+                    <div className="pc-oos">
+                        <span>نفد من المخزون</span>
+                    </div>
+                )}
+
+                {/* Hover CTA bar */}
+                <div className={`pc-cta-bar ${hovered && !isOutOfStock ? 'pc-cta-visible' : ''}`}>
+                    <span className="pc-cta-inner">
+                        <ShoppingBag size={15} />
+                        أضف للسلة
+                    </span>
+                    <span className="pc-cta-divider" />
+                    <span className="pc-cta-inner">
+                        <Eye size={15} />
+                        عرض
+                    </span>
+                </div>
+            </div>
+
+            {/* Info Area */}
+            <div className="pc-info" dir="rtl">
+                <p className="pc-cat-name">{product.categories?.name || 'آل مسعد'}</p>
+                <h3 className="pc-name">{product.name}</h3>
+                <div className="pc-price-row">
+                    {product.base_price > 0 ? (
+                        <>
+                            <span className="pc-price">
+                                {formatPrice(hasDiscount ? discountedPrice : product.base_price)}
+                            </span>
+                            {hasDiscount && (
+                                <span className="pc-old-price">{formatPrice(product.base_price)}</span>
+                            )}
+                        </>
+                    ) : (
+                        <span className="pc-contact-price">تواصل لمعرفة السعر</span>
+                    )}
+                </div>
+            </div>
+        </Link>
+    );
+};
+
+const FlashSale = () => {
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isInView, setIsInView] = useState(false);
+    const sectionRef = useRef(null);
+
+    useEffect(() => {
+        const loadProducts = async () => {
+            const { data } = await getProducts();
+            if (data) setProducts(data.slice(0, 8));
+            setLoading(false);
+        };
+        loadProducts();
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsInView(true);
+                    observer.unobserve(entry.target);
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (sectionRef.current) observer.observe(sectionRef.current);
+        return () => { if (sectionRef.current) observer.unobserve(sectionRef.current); };
+    }, []);
+
+    return (
+        <section className="flash-sale-section" ref={sectionRef}>
             <div className="container">
                 <div className="section-header">
                     <h2>عروض فلاش سيل</h2>
-                    <p>أفضل وأقوى عروض فلاش سيل من آل مسعود على الموقع الألكتروني</p>
+                    <p>أفضل وأقوى عروض فلاش سيل من آل مسعد على الموقع الألكتروني</p>
                 </div>
-                <div className="products-grid">
-                    {products.map((p, i) => <ProductCard key={i} product={p} />)}
-                </div>
+
+                {loading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
+                        <div className="pc-spinner" />
+                    </div>
+                ) : (
+                    <div className={`products-grid ${isInView ? 'trigger-hint' : ''}`}>
+                        {products.length > 0 ? (
+                            products.map((p) => <ProductCard key={p.id} product={p} />)
+                        ) : (
+                            <p style={{ gridColumn: '1/-1', textAlign: 'center', padding: '48px 0', color: '#94a3b8', fontWeight: 700 }}>
+                                لا توجد منتجات حالياً
+                            </p>
+                        )}
+                    </div>
+                )}
             </div>
         </section>
     );

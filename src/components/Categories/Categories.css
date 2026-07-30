@@ -1,5 +1,6 @@
 .categories-section {
     padding: 40px 0;
+    background-color: #f8fafc;
 }
 
 .categories-grid {
@@ -7,7 +8,13 @@
     justify-content: space-between;
     gap: 20px;
     overflow-x: auto;
-    padding-bottom: 20px;
+    padding: 10px 15px 20px 15px;
+    /* Added side padding */
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    /* Fading edges to show there is more content */
+    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
 }
 
 .categories-grid::-webkit-scrollbar {
@@ -28,21 +35,30 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    overflow: hidden;
+    border: 3px solid #fff;
+    box-shadow: var(--shadow-sm);
     transition: var(--transition);
     cursor: pointer;
 }
 
 .category-icon-wrapper:hover {
-    background-color: var(--white);
     box-shadow: var(--shadow-md);
     transform: translateY(-5px);
+    border-color: var(--secondary);
 }
 
 .category-icon-wrapper img {
     width: 100%;
-    height: auto;
-    opacity: 0.7;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.95;
+    transition: transform 0.4s ease;
+}
+
+.category-icon-wrapper:hover img {
+    transform: scale(1.1);
+    opacity: 1;
 }
 
 .category-name {

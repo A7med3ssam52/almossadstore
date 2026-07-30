@@ -1,0 +1,79 @@
+.store-toast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-radius: var(--radius-xl);
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: var(--shadow-lg), 0 0 0 1px var(--glass-border) inset;
+    min-width: 320px;
+    max-width: 90vw;
+}
+
+.toast-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toast-icon.success {
+    color: #10b981; /* Emerald 500 */
+}
+
+.toast-icon.error {
+    color: #ef4444; /* Red 500 */
+}
+
+.toast-icon.info {
+    color: var(--secondary);
+}
+
+.toast-message {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-main);
+    font-family: 'Cairo', sans-serif;
+    line-height: 1.4;
+}
+
+.toast-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: var(--transition-fast);
+    padding: 4px;
+    border-radius: 50%;
+}
+
+.toast-close:hover {
+    color: var(--primary);
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* Subtle glowing accent based on type */
+.toast-success {
+    border-bottom: 2px solid #10b981;
+}
+
+.toast-error {
+    border-bottom: 2px solid #ef4444;
+}
+
+.toast-info {
+    border-bottom: 2px solid var(--secondary);
+}
+
+/* RTL Specifics */
+[dir="rtl"] .store-toast {
+    /* Framer motion translates X to center so it's handled properly, just ensure text is right aligned */
+    text-align: right;
+}

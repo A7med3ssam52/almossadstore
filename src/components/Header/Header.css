@@ -1,98 +1,392 @@
+/* =========================================
+   SITE HEADER — Pixel-Perfect Reference Match
+   Gradient: #005f5a (right) → #008a7e (left)
+========================================= */
+
 .site-header {
-    width: 100%;
+    position: relative;
+    z-index: 1000;
 }
 
-.top-bar {
-    background-color: var(--primary);
-    color: var(--white);
-    padding: 8px 0;
-    font-size: 14px;
-}
-
-.lang-switch {
-    cursor: pointer;
+/* ─── SINGLE HEADER ROW — centered ───────────── */
+.header-row {
     display: flex;
     align-items: center;
-    gap: 5px;
+    justify-content: center;
+    padding: 12px 0;
+    gap: 20px;
+    flex-direction: row;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
-.cart-widget {
-    margin-right: 20px;
+/* ─── LOGO (far right in RTL) ─────────────────── */
+.header-logo {
+    display: flex;
+    align-items: center;
     gap: 8px;
-    cursor: pointer;
+    flex-shrink: 0;
+    color: white;
+    text-decoration: none;
 }
 
-.cart-count {
-    background-color: var(--accent);
-    color: var(--black);
-    padding: 0 6px;
-    border-radius: 50%;
-    font-weight: bold;
+.logo-grid-icon {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+    width: 34px;
+    height: 34px;
+    padding: 2px;
 }
 
-.user-account {
-    gap: 8px;
-    cursor: pointer;
+.logo-grid-icon div {
+    border-radius: 2px;
 }
 
-.main-header {
-    background-color: var(--primary);
-    padding: 15px 0 25px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+.logo-grid-icon div:nth-child(1) {
+    background: rgba(255, 255, 255, 0.95);
 }
 
-.logo-text {
-    font-size: 32px;
+.logo-grid-icon div:nth-child(2) {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.logo-grid-icon div:nth-child(3) {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.logo-grid-icon div:nth-child(4) {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.logo-text-block {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    text-align: right;
+}
+
+.logo-main {
+    font-size: 20px;
     font-weight: 800;
-    color: var(--white);
-    line-height: 1;
-    display: block;
+    color: white;
 }
 
 .logo-sub {
-    font-size: 14px;
-    color: var(--secondary);
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.65);
     font-weight: 500;
-    display: block;
 }
 
+/* ─── SEARCH ──────────────────────────────────── */
 .header-search {
     flex: 1;
-    max-width: 700px;
-    margin: 0 40px;
+    min-width: 0;
+    position: relative;
 }
 
-.search-box {
-    background: var(--white);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    height: 45px;
+.search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 38px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
-.search-box input {
+.search-input {
     flex: 1;
     border: none;
-    padding: 0 15px;
-    font-family: inherit;
-    font-size: 16px;
     outline: none;
+    padding: 0 14px;
+    font-size: 13px;
+    font-family: inherit;
+    color: white;
+    text-align: right;
+    background: transparent;
+    direction: rtl;
+    height: 100%;
+    min-width: 0;
 }
 
+.search-input::placeholder {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+/* Search button — rounded pill */
 .search-btn {
-    background-color: #004d4a;
-    color: var(--white);
-    padding: 0 25px;
-    height: 100%;
-    font-weight: bold;
-    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    color: white;
+    border: none;
+    padding: 0 14px;
+    height: 30px;
+    margin: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.18s ease;
+    flex-shrink: 0;
+    border-radius: 50px;
 }
 
 .search-btn:hover {
-    background-color: #003634;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+/* Autocomplete suggestions */
+.search-suggestions {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    left: 0;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    z-index: 200;
+}
+
+.suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #333;
+    flex-direction: row-reverse;
+    transition: background 0.14s;
+}
+
+.suggestion-item:hover {
+    background: #f5f5f5;
+}
+
+/* ─── ACTIONS ────────────────────────────────── */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.action-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: white;
+    cursor: pointer;
+    padding: 5px 8px;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+    text-align: right;
+}
+
+.action-item:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.action-globe {
+    padding: 5px 6px;
+}
+
+.action-label {
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Cart badge */
+.cart-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.cart-badge {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    background: var(--accent);
+    color: var(--black);
+    font-size: 8px;
+    font-weight: 900;
+    min-width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+/* ─── MOBILE SEARCH PILL ────────────────────── */
+.mobile-search-pill {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 8px 16px;
+    border-radius: 50px;
+    color: white;
+    cursor: pointer;
+    flex: 1;
+    margin: 0 15px;
+    transition: background 0.2s, border-color 0.2s;
+    direction: rtl;
+    min-width: 0;
+}
+
+.mobile-search-pill:hover {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.mobile-search-pill span {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.75);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mobile-search-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 80px;
+}
+
+.overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+}
+
+.overlay-content {
+    position: relative;
+    width: 90%;
+    max-width: 600px;
+    z-index: 10;
+}
+
+.overlay-search-wrapper {
+    display: flex;
+    gap: 10px;
+    background: white;
+    padding: 8px;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.overlay-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 16px;
+    padding: 10px 15px;
+    text-align: right;
+    direction: rtl;
+    background: transparent;
+}
+
+.overlay-close-btn {
+    background: var(--primary);
+    color: white;
+    padding: 0 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+}
+
+.overlay-suggestions {
+    margin-top: 10px;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.overlay-suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 20px;
+    cursor: pointer;
+    font-size: 15px;
+    color: #333;
+    flex-direction: row; /* Icon and text will follow the direction: rtl */
+    direction: rtl; 
+    transition: background 0.15s;
+    border-bottom: 1px solid #eee;
+    text-align: right;
+}
+
+.overlay-suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.overlay-suggestion-item:hover {
+    background: #f8f9fa;
+}
+
+/* ─── RESPONSIVE ──────────────────────────────── */
+@media (max-width: 992px) {
+    .action-label {
+        display: none;
+    }
+
+    .logo-sub {
+        display: none;
+    }
 }
 
 @media (max-width: 768px) {
-    .header-search {
+    .desktop-only {
         display: none;
+    }
+
+    .mobile-search-pill {
+        display: flex;
+    }
+}
+
+@media (max-width: 600px) {
+    .logo-grid-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .logo-main {
+        font-size: 16px;
+    }
+
+    .search-btn span {
+        display: none;
+    }
+
+    .search-btn {
+        padding: 0 10px;
+    }
+
+    .header-row {
+        gap: 10px;
+        padding: 8px 15px;
     }
 }

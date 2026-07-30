@@ -1,0 +1,35 @@
+import React, { useState, useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import Header from './components/Header/Header';
+import Navbar from './components/Navbar/Navbar';
+import WhatsAppWidget from './components/WhatsAppWidget/WhatsAppWidget';
+import Footer from './components/Footer/Footer';
+import MobileNav from './components/MobileNav/MobileNav';
+
+// Basic placeholders to isolate if Header/Navbar causes crash
+const HomePlaceholder = () => <div style={{ padding: '100px', textAlign: 'center' }}>صفحة الرئيسية قريباً</div>;
+const LoginPlaceholder = () => <div style={{ padding: '100px', textAlign: 'center' }}>صفحة تسجيل الدخول قريباً</div>;
+const SignupPlaceholder = () => <div style={{ padding: '100px', textAlign: 'center' }}>صفحة إنشاء حساب قريباً</div>;
+
+function App() {
+  return (
+    <div className="app">
+      <div className="header-navbar-wrapper">
+        <Header />
+        <Navbar />
+      </div>
+      
+      <Routes>
+        <Route path="/" element={<HomePlaceholder />} />
+        <Route path="/login" element={<LoginPlaceholder />} />
+        <Route path="/signup" element={<SignupPlaceholder />} />
+      </Routes>
+
+      <Footer />
+      <MobileNav />
+      <WhatsAppWidget />
+    </div>
+  );
+}
+
+export default App;
