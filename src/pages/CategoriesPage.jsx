@@ -25,7 +25,6 @@ const CategoriesPage = () => {
             'عدد يدوية': 'daily-tools',
             'عروض وخصومات': 'offers',
             'أدوات': 'hardware',
-            'عدد يدوية': 'hardware',
             'سباكة': 'hardware'
         };
         return mapping[cat.name] || cat.id;

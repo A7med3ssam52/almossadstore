@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, SlidersHorizontal, ChevronDown, ShoppingBag, X } from 'lucide-react';
 import { getProducts, getCategories } from '../services/supabase/inventoryService';
 import { ProductCard } from '../components/FlashSale/FlashSale';
-import Pagination from '../components/UI/Pagination';
+import Pagination from '../components/ui/Pagination';
 import { useResponsivePagination } from '../hooks/useResponsivePagination';
 import './Catalog.css';
 import '../components/FlashSale/FlashSale.css';
