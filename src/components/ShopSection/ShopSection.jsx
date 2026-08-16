@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getProducts } from '@/services/supabase/inventoryService';
 import { ProductCard } from '../FlashSale/FlashSale';
-import Pagination from '@/components/UI/Pagination';
+import Pagination from '@/components/ui/Pagination';
 import { useResponsivePagination } from '@/hooks/useResponsivePagination';
 import './ShopSection.css';
 import '../FlashSale/FlashSale.css';

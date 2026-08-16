@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Ticket, Plus, Trash2, Copy, Check, X, AlertTriangle, Calendar, Hash, RefreshCcw, Loader2 } from 'lucide-react';
 import { supabase } from '@/services/supabase/adminClient';
-import Modal from '@/components/UI/Modal';
+import Modal from '@/components/ui/Modal';
 
 const MOCK_COUPONS = [
     { id: 1, code: 'WELCOME20', discount_type: 'percentage', discount_value: 20, expiry_date: '2026-12-31', usage_limit: 100, used_count: 12, is_active: true },

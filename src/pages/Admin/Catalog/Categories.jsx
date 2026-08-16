@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tag, Plus, Edit, Trash2, AlertTriangle, X, Check, FolderOpen, Loader2 } from 'lucide-react';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '@/services/supabase/inventoryService';
-import Modal from '@/components/UI/Modal';
+import Modal from '@/components/ui/Modal';
 
 const Toast = ({ msg, type }) => (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}

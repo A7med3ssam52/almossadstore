@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { getProducts, getCategories } from '@/services/supabase/inventoryService';
 import { ProductCard } from '@/components/FlashSale/FlashSale';
 import EmptyCategory from '@/components/EmptyStates/EmptyCategory';
-import Pagination from '@/components/UI/Pagination';
+import Pagination from '@/components/ui/Pagination';
 import { useResponsivePagination } from '@/hooks/useResponsivePagination';
 import './CategoryView.css';
 

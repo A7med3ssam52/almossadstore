@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Image as ImageIcon, Plus, Trash2, Eye, EyeOff, X, Check, GripVertical, ExternalLink, Link as LinkIcon, Hash, Loader2, ImagePlus } from 'lucide-react';
 import { getBanners, createBanner, updateBanner, deleteBanner } from '@/services/supabase/contentService';
-import Modal from '@/components/UI/Modal';
+import Modal from '@/components/ui/Modal';
 
 const Toast = ({ msg, type }) => (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}

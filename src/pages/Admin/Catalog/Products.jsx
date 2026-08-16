@@ -4,7 +4,7 @@ import { Package, Plus, Search, Filter, Edit, Trash2, AlertTriangle, X, Check } 
 import { getProducts, deleteProduct, getCategories } from '@/services/supabase/inventoryService';
 
 import ProductForm from '@/components/Admin/Products/ProductForm';
-import Modal from '@/components/UI/Modal';
+import Modal from '@/components/ui/Modal';
 
 const statusBadge = (stock) => {
     if (stock === 0) return { label: 'نفد', cls: 'bg-red-100 text-red-700 border-red-200' };

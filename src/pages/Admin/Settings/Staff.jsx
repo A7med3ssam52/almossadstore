@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Shield, ShieldOff, Trash2, X, Check, Mail, UserPlus, Loader2 } from 'lucide-react';
-import Modal from '@/components/UI/Modal';
+import Modal from '@/components/ui/Modal';
 import AdminLabel from '@/components/Admin/UI/AdminLabel';
 import AdminInput from '@/components/Admin/UI/AdminInput';
 import AdminSelect from '@/components/Admin/UI/AdminSelect';
