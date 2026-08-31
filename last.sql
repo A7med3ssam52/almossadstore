@@ -14863,5 +14863,28 @@ VALUES (
     0, 0, false
 );
 
--- ─── 18. Reload PostgREST Schema Cache ──────────────────────
+-- ─── 18. Update Images for Hand Tools (عدد يدوية) ─────────
+-- Ensure category icon and products have a visible image
+UPDATE public.categories
+SET icon_url = 'https://images.unsplash.com/photo-1581244276891-83393a8ba21d?auto=format&fit=crop&q=80&w=600'
+WHERE name IN ('عدد يدوية', 'العدد اليومية') AND (icon_url IS NULL OR icon_url = '');
+
+UPDATE public.products
+SET images = '["https://images.unsplash.com/photo-1581244276891-83393a8ba21d?auto=format&fit=crop&q=80&w=600"]'::jsonb,
+    updated_at = NOW()
+WHERE category_id IN (SELECT id FROM public.categories WHERE name IN ('عدد يدوية', 'العدد اليومية'))
+  AND (images = '[]'::jsonb OR images IS NULL);
+
+-- Also cover products using category_ids array (for multi-category support)
+UPDATE public.products
+SET images = '["https://images.unsplash.com/photo-1581244276891-83393a8ba21d?auto=format&fit=crop&q=80&w=600"]'::jsonb,
+    updated_at = NOW()
+WHERE images = '[]'::jsonb
+  AND EXISTS (
+    SELECT 1 FROM public.categories c
+    WHERE c.name IN ('عدد يدوية', 'العدد اليومية')
+      AND c.id::text = ANY(SELECT jsonb_array_elements_text(category_ids))
+  );
+
+-- ─── 19. Reload PostgREST Schema Cache ──────────────────────
 NOTIFY pgrst, 'reload schema';
