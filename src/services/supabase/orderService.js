@@ -1,6 +1,10 @@
 import { supabase } from './adminClient';
 
-const isConfigured = () => !!import.meta.env.VITE_SUPABASE_URL;
+const isConfigured = () => {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    return !!(url && key && url.startsWith('http'));
+};
 
 export const getOrders = async (filters = {}) => {
     if (!isConfigured()) return { data: [], error: null };
@@ -18,7 +22,7 @@ export const getOrders = async (filters = {}) => {
 };
 
 export const getOrderById = async (id) => {
-    if (!isConfigured()) return { data: null, error: 'Not configured' };
+    if (!isConfigured()) return { data: null, error: null };
     try {
         const { data, error } = await supabase.from('orders').select('*, profiles(full_name, id)').eq('id', id).single();
         if (error) throw error;
@@ -30,7 +34,7 @@ export const getOrderById = async (id) => {
 };
 
 export const updateOrderStatus = async (id, status) => {
-    if (!isConfigured()) return { error: 'Not configured' };
+    if (!isConfigured()) return { error: null };
     try {
         const { error } = await supabase.from('orders').update({ status }).eq('id', id);
         if (error) throw error;

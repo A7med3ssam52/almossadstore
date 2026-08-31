@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+const isConfigured = !!(supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http'));
 
 // Create a safe client or a mock to prevent crashes
 const mockSupabase = {
@@ -23,7 +24,7 @@ const mockSupabase = {
     }
 };
 
-export const supabase = (supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http'))
+export const supabase = isConfigured
     ? createClient(supabaseUrl, supabaseAnonKey)
     : mockSupabase;
 

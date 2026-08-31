@@ -10,7 +10,11 @@ const MOCK_COUPONS = [
     { id: 3, code: 'SUMMER15', discount_type: 'percentage', discount_value: 15, expiry_date: '2026-09-01', usage_limit: 200, used_count: 88, is_active: true },
 ];
 
-const isConfigured = () => !!import.meta.env.VITE_SUPABASE_URL;
+const isConfigured = () => {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    return !!(url && key && url.startsWith('http'));
+};
 
 const Toast = ({ msg, type }) => (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}

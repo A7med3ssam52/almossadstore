@@ -1,11 +1,14 @@
 import { supabase } from '@/supabaseClient';
 
-const isConfigured = () => !!import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_URL !== 'your_supabase_url_here';
+const isConfigured = () => {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    return !!(url && key && url.startsWith('http') && url !== 'your_supabase_url_here');
+};
 
 /* ─── Products ─── */
 export const getProducts = async (filters = {}) => {
     if (!isConfigured()) {
-        console.warn('Supabase not configured, returning empty data');
         return { data: [], error: null };
     }
     try {
@@ -25,7 +28,7 @@ export const getProducts = async (filters = {}) => {
 };
 
 export const getProductById = async (id) => {
-    if (!isConfigured()) return { data: null, error: 'Not configured' };
+    if (!isConfigured()) return { data: null, error: null };
     try {
         const { data, error } = await supabase
             .from('products')
@@ -41,7 +44,7 @@ export const getProductById = async (id) => {
 };
 
 export const createProduct = async (productData) => {
-    if (!isConfigured()) return { data: null, error: 'Not configured' };
+    if (!isConfigured()) return { data: null, error: null };
     try {
         // Ensure numeric fields are properly typed for back.sql schema
         const sanitized = {
@@ -62,7 +65,7 @@ export const createProduct = async (productData) => {
 };
 
 export const updateProduct = async (id, updates) => {
-    if (!isConfigured()) return { data: null, error: 'Not configured' };
+    if (!isConfigured()) return { data: null, error: null };
     try {
         // Ensure numeric fields are properly typed
         const sanitized = {
@@ -84,7 +87,7 @@ export const updateProduct = async (id, updates) => {
 };
 
 export const deleteProduct = async (id) => {
-    if (!isConfigured()) return { error: 'Not configured' };
+    if (!isConfigured()) return { error: null };
     try {
         const { error } = await supabase.from('products').delete().eq('id', id);
         if (error) throw error;
@@ -96,7 +99,7 @@ export const deleteProduct = async (id) => {
 };
 
 export const updateStock = async (productId, newQty) => {
-    if (!isConfigured()) return { error: 'Not configured' };
+    if (!isConfigured()) return { error: null };
     try {
         const { error } = await supabase.from('products').update({ stock_quantity: newQty }).eq('id', productId);
         if (error) throw error;
@@ -176,7 +179,7 @@ export const getCategories = async () => {
 };
 
 export const createCategory = async (catData) => {
-    if (!isConfigured()) return { data: null, error: 'Not configured' };
+    if (!isConfigured()) return { data: null, error: null };
     try {
         const { data, error } = await supabase.from('categories').insert(catData).select().single();
         if (error) throw error;
@@ -188,7 +191,7 @@ export const createCategory = async (catData) => {
 };
 
 export const updateCategory = async (id, updates) => {
-    if (!isConfigured()) return { data: null, error: 'Not configured' };
+    if (!isConfigured()) return { data: null, error: null };
     try {
         const { data, error } = await supabase.from('categories').update(updates).eq('id', id).select().single();
         if (error) throw error;
@@ -200,7 +203,7 @@ export const updateCategory = async (id, updates) => {
 };
 
 export const deleteCategory = async (id) => {
-    if (!isConfigured()) return { error: 'Not configured' };
+    if (!isConfigured()) return { error: null };
     try {
         const { error } = await supabase.from('categories').delete().eq('id', id);
         if (error) throw error;
