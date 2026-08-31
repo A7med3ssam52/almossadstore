@@ -6,7 +6,7 @@ import { checkIsAdmin } from '@/services/supabase/adminClient';
  * AdminRoute Guard
  * Protects all /admin/* routes.
  * Only allows access if the logged-in user has role = 'admin' in the profiles table.
- * Redirects to the storefront home if not authenticated or not an admin.
+ * Opens login modal if not authenticated or not an admin.
  */
 const AdminRoute = () => {
     const navigate = useNavigate();
@@ -20,11 +20,13 @@ const AdminRoute = () => {
                     setStatus('authorized');
                 } else {
                     setStatus('denied');
-                    navigate('/', { replace: true });
+                    // Open login modal instead of redirecting
+                    window.dispatchEvent(new CustomEvent('auth:open', { detail: { mode: 'login' } }));
                 }
-            } catch {
+            } catch (err) {
+                console.warn('Admin check failed:', err);
                 setStatus('denied');
-                navigate('/', { replace: true });
+                window.dispatchEvent(new CustomEvent('auth:open', { detail: { mode: 'login' } }));
             }
         };
         verify();

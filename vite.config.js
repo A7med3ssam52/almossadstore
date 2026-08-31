@@ -10,4 +10,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    // SPA fallback - serves index.html for all routes
+    historyApiFallback: true,
+  },
+  build: {
+    // Ensure SPA routing works on static hosts
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
 })
