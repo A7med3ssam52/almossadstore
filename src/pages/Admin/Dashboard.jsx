@@ -37,6 +37,14 @@ const Dashboard = () => {
                 setChartData(salesData);
             } catch (error) {
                 console.error("Error loading dashboard data:", error);
+                // Set fallback metrics
+                setMetrics({
+                    totalSales: "0 ج.م",
+                    orderCount: 0,
+                    userCount: 0,
+                    conversionRate: "0%",
+                    trends: { sales: '0%', orders: '0%', users: '0%', conversion: '0%' }
+                });
             } finally {
                 setLoading(false);
             }
@@ -58,6 +66,8 @@ const Dashboard = () => {
     const ordersTarget = 50;
     const usersTarget = 100;
     const conversionTarget = 5;
+
+    const totalSalesNum = parseFloat(metrics?.totalSales?.replace(/,/g, '').replace(' ج.م', '')) || 0;
 
     return (
         <motion.div
@@ -98,7 +108,7 @@ const Dashboard = () => {
                     trend={metrics?.trends.sales.startsWith('+') ? 'up' : 'down'}
                     trendValue={metrics?.trends.sales}
                     color="orange"
-                    progress={Math.min((parseFloat(metrics?.totalSales.replace(/,/g, '').replace(' ج.م', '')) / salesTarget) * 100, 100) || 0}
+                    progress={Math.min((totalSalesNum / salesTarget) * 100, 100) || 0}
                     targetLabel="Target 80%"
                 />
                 <StatsCard

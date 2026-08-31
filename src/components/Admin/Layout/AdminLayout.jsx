@@ -29,20 +29,20 @@ const AdminLayout = () => {
   }, [pathname]);
 
   return (
-    <div className="flex items-stretch h-screen w-screen bg-[#f8fafc] text-slate-950 overflow-hidden font-sans" dir="rtl">
+    <div className="flex items-stretch min-h-screen w-screen bg-[#f8fafc] text-slate-950 font-sans" dir="rtl">
 
       {/* Sidebar - static on lg, fixed on mobile */}
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-full relative overflow-hidden items-stretch">
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-0 relative">
 
         {/* Header at top */}
-        <Header onMenuClick={() => setIsSidebarOpen(true)} />
+        <Header onMenuClick={() => setIsSidebarOpen(true)} className="shrink-0" />
 
         {/* Scrollable Content */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto bg-radial-dot relative custom-scrollbar-main">
-          <div className="p-4 md:p-8 lg:p-12 max-w-[1600px] mx-auto opacity-0 animate-fade-in">
+        <main ref={mainRef} className="flex-1 overflow-y-auto bg-radial-dot relative custom-scrollbar-main min-h-0">
+          <div className="p-4 md:p-8 lg:p-12 max-w-[1600px] mx-auto w-full">
             <Outlet />
           </div>
 
