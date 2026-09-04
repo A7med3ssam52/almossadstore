@@ -1,50 +1,45 @@
 import { supabase } from './adminClient';
 
-/**
- * Metrics Service
- * Responsible for fetching aggregate statistical data for the admin dashboard.
- * Currently uses mock data logic or direct Supabase queries.
- */
-
 export const getDashboardMetrics = async () => {
     try {
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString();
+        const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString();
 
-        // 1. Fetch Total Sales (Current Month)
+        // Only completed/paid orders count as sales (fix logical error)
+        const salesStatuses = ['completed','paid','processing']; // processing counts as revenue but not pending/cancelled
+        // 1. Current month sales
         const { data: salesData, error: salesError } = await supabase
             .from('orders')
-            .select('total_amount')
+            .select('total_amount, status')
             .gte('created_at', firstDayOfMonth)
-            .neq('status', 'cancelled');
-
+            .in('status', salesStatuses);
         if (salesError) throw salesError;
         const totalSales = salesData?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
 
-        // 2. Fetch Order Count (Current Month)
-        const { count: orderCount, error: countError } = await supabase
-            .from('orders')
-            .select('*', { count: 'exact', head: true })
-            .gte('created_at', firstDayOfMonth)
-            .neq('status', 'cancelled');
+        // 2. Order counts
+        const { count: orderCount } = await supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', firstDayOfMonth).in('status', salesStatuses);
+        const { count: prevOrderCount } = await supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', firstDayPrevMonth).lte('created_at', lastDayPrevMonth).in('status', salesStatuses);
+        const { data: prevSalesData } = await supabase.from('orders').select('total_amount').gte('created_at', firstDayPrevMonth).lte('created_at', lastDayPrevMonth).in('status', salesStatuses);
+        const prevTotalSales = prevSalesData?.reduce((acc,c)=>acc+Number(c.total_amount),0)||0;
 
-        if (countError) throw countError;
+        // 3. User count
+        const { count: userCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+        const { count: prevUserCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).lte('created_at', lastDayPrevMonth);
 
-        // 3. Fetch User Count (Total Profiles)
-        const { count: userCount, error: userError } = await supabase
-            .from('profiles')
-            .select('*', { count: 'exact', head: true });
-
-        if (userError) throw userError;
-
-        // 4. Calculate Conversion Rate (Orders/Users)
         const conversionRate = userCount > 0 ? ((orderCount / userCount) * 100).toFixed(2) : 0;
 
-        // 5. Mock trends for now (could be compared to previous month in future)
+        const calcTrend = (curr, prev) => {
+            if (!prev || prev===0) return curr>0 ? '+100%' : '0%';
+            const pct = ((curr - prev)/prev*100).toFixed(1);
+            return (pct>=0?'+':'')+pct+'%';
+        };
+
         const trends = {
-            sales: totalSales > 0 ? '+15.2%' : '0%',
-            orders: orderCount > 0 ? '+8.5%' : '0%',
-            users: userCount > 0 ? '+12.1%' : '0%',
+            sales: calcTrend(totalSales, prevTotalSales),
+            orders: calcTrend(orderCount||0, prevOrderCount||0),
+            users: calcTrend(userCount||0, prevUserCount||0),
             conversion: '+0.4%'
         };
 
@@ -56,7 +51,7 @@ export const getDashboardMetrics = async () => {
             trends
         };
     } catch (error) {
-        console.warn('Supabase error or unreachable, using default values:', error);
+        console.warn('Supabase error:', error);
         return {
             totalSales: "0 ج.م",
             orderCount: 0,
@@ -67,40 +62,26 @@ export const getDashboardMetrics = async () => {
     }
 };
 
-/**
- * Fetch and aggregate sales data for charts (Weekly/Monthly)
- */
 export const getSalesChartData = async (days = 7) => {
     try {
         const now = new Date();
         const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days + 1);
         startDate.setHours(0, 0, 0, 0);
-
         const { data: salesData, error } = await supabase
             .from('orders')
             .select('total_amount, created_at')
             .gte('created_at', startDate.toISOString())
-            .neq('status', 'cancelled')
+            .in('status', ['completed','paid','processing'])
             .order('created_at', { ascending: true });
-
         if (error) throw error;
-
-        // Create a map of dates in the range
         const dataMap = {};
         for (let i = 0; i < days; i++) {
             const date = new Date(startDate);
             date.setDate(startDate.getDate() + i);
             const dateStr = date.toISOString().split('T')[0];
-            
-            // Format name based on timeframe
-            const name = days <= 7 
-                ? getArabicDayName(date.getDay()) 
-                : `${date.getDate()}/${date.getMonth() + 1}`;
-
+            const name = days <= 7 ? getArabicDayName(date.getDay()) : `${date.getDate()}/${date.getMonth() + 1}`;
             dataMap[dateStr] = { name, sales: 0, revenue: 0 };
         }
-
-        // Aggregate real data
         salesData?.forEach(order => {
             const dateStr = new Date(order.created_at).toISOString().split('T')[0];
             if (dataMap[dateStr]) {
@@ -108,7 +89,6 @@ export const getSalesChartData = async (days = 7) => {
                 dataMap[dateStr].revenue += Number(order.total_amount);
             }
         });
-
         return Object.values(dataMap);
     } catch (error) {
         console.error('Error fetching chart data:', error);
@@ -116,50 +96,40 @@ export const getSalesChartData = async (days = 7) => {
     }
 };
 
-/**
- * Helper to get Arabic Day Name
- */
 function getArabicDayName(dayIndex) {
-    const days = ['الأحد', 'الأثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     return days[dayIndex];
 }
 
-/**
- * Fetch Recent Orders for the Quick Actions Feed.
- */
 export const getRecentOrders = async (limit = 5) => {
+    // Fix: column is user_id not customer_id, join profiles correctly
     const { data, error } = await supabase
         .from('orders')
         .select(`
       id,
-      customer_id,
+      user_id,
       total_amount,
       status,
       created_at,
-      profiles (
-        full_name
-      )
+      customer_name,
+      profiles ( full_name )
     `)
         .order('created_at', { ascending: false })
         .limit(limit);
-
     if (error) {
         console.error('Error fetching recent orders:', error);
         return [];
     }
-
     return data.map(order => ({
         id: `#ORD-${order.id.slice(0, 4).toUpperCase()}`,
-        customer: order.profiles?.full_name || 'عميل مجهول',
+        rawId: order.id,
+        customer: order.profiles?.full_name || order.customer_name || 'زبون',
         total: `${Number(order.total_amount).toLocaleString()} ج.م`,
         status: order.status,
         time: formatArabicRelativeTime(new Date(order.created_at))
     }));
 };
 
-/**
- * Helper to format relative time in Arabic (Simple implementation)
- */
 function formatArabicRelativeTime(date) {
     const diff = Date.now() - date.getTime();
     const minutes = Math.floor(diff / 60000);

@@ -121,7 +121,7 @@ const CartDrawer = () => {
                                                     exit={{ opacity: 0, x: -20 }}
                                                     className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex gap-4"
                                                 >
-                                                    <img src={item.image} alt={item.name} className="w-20 h-20 rounded-2xl object-cover bg-slate-100" />
+                                                    <img src={item.image_url || item.image} alt={item.name} className="w-20 h-20 rounded-2xl object-cover bg-slate-100" />
                                                     <div className="flex-1 flex flex-col justify-between">
                                                         <div>
                                                             <div className="flex justify-between items-start">

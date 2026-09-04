@@ -8,7 +8,6 @@ const isConfigured = () => {
 
 export const getOrders = async (filters = {}) => {
     if (!isConfigured()) return { data: [], error: null };
-    
     try {
         let q = supabase.from('orders').select('*, profiles(full_name)').order('created_at', { ascending: false });
         if (filters.status && filters.status !== 'all') q = q.eq('status', filters.status);
@@ -26,6 +25,9 @@ export const getOrderById = async (id) => {
     try {
         const { data, error } = await supabase.from('orders').select('*, profiles(full_name, id)').eq('id', id).single();
         if (error) throw error;
+        // Also fetch order_items with product info
+        const { data: items, error: itemsError } = await supabase.from('order_items').select('*, products(name, images, base_price)').eq('order_id', id);
+        if (!itemsError) data.items = items || [];
         return { data, error: null };
     } catch (e) {
         console.error('getOrderById error:', e);
@@ -36,7 +38,7 @@ export const getOrderById = async (id) => {
 export const updateOrderStatus = async (id, status) => {
     if (!isConfigured()) return { error: null };
     try {
-        const { error } = await supabase.from('orders').update({ status }).eq('id', id);
+        const { error } = await supabase.from('orders').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
         if (error) throw error;
         return { error: null };
     } catch (e) { return { error: e.message }; }
@@ -55,3 +57,11 @@ export const getOrdersCount = async () => {
     }
 };
 
+export const getOrderItems = async (orderId) => {
+    if (!isConfigured()) return { data: [], error: null };
+    try {
+        const { data, error } = await supabase.from('order_items').select('*, products(name, images)').eq('order_id', orderId);
+        if (error) throw error;
+        return { data: data||[], error: null };
+    } catch(e){ return { data: [], error: e.message }; }
+};
