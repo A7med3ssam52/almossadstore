@@ -1,32 +1,28 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice } from '@/utils/formatters';
 
 const CartDrawer = () => {
-    const { isCartOpen, closeCart, cartItems, totalItems, subtotal, updateQuantity, removeFromCart } = useCart();
+    const { isCartOpen, closeCart, cartItems, totalItems, subtotal, updateQuantity, removeFromCart, clearCart } = useCart();
     const navigate = useNavigate();
-
-    const sidebarVariants = {
-        closed: { x: '100%', opacity: 0 },
-        open: { x: 0, opacity: 1 }
-    };
-
-    const backdropVariants = {
-        closed: { opacity: 0 },
-        open: { opacity: 1 }
-    };
 
     const handleCheckout = () => {
         closeCart();
         navigate('/checkout');
     };
 
+    // Prevent body scroll when open
     React.useEffect(() => {
-        console.log("🛒 CartDrawer loaded with Premium UI v2.0 (Glassmorphism & Sync)");
-    }, []);
+        if (isCartOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [isCartOpen]);
 
     if (typeof window === 'undefined') return null;
 
@@ -34,188 +30,194 @@ const CartDrawer = () => {
         <AnimatePresence>
             {isCartOpen && (
                 <>
-                    {/* Backdrop */}
                     <motion.div
                         key="cart-backdrop"
-                        initial="closed"
-                        animate="open"
-                        exit="closed"
-                        variants={backdropVariants}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
                         onClick={closeCart}
                         className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99998]"
                     />
 
                     <motion.div
                         key="cart-drawer-panel"
-                        initial="closed"
-                        animate="open"
-                        exit="closed"
-                        variants={sidebarVariants}
-                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="bg-white/95 backdrop-blur-3xl shadow-[-20px_0_50px_rgba(0,0,0,0.1)] flex flex-col rounded-t-[2.5rem] sm:rounded-t-none sm:rounded-l-[3rem] overflow-hidden border-l border-white/20"
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+                        className="fixed inset-y-0 right-0 bg-white flex flex-col overflow-hidden z-[99999] border-l border-slate-100"
                         style={{
-                            position: 'fixed',
-                            top: 0,
-                            right: 0,
-                            bottom: 0,
-                            height: '100%',
-                            maxHeight: '100dvh',
                             width: '100%',
                             maxWidth: '420px',
-                            zIndex: 99999,
+                            height: '100dvh',
                             fontFamily: 'Cairo, sans-serif',
-                            backdropFilter: 'blur(40px)', // Fallback
-                            WebkitBackdropFilter: 'blur(40px)' // Safari
                         }}
                     >
-                        {/* Header with high-contrast gradient */}
-                        <div className="flex items-center justify-between p-7 bg-gradient-to-l from-orange-600/10 to-transparent border-b border-orange-100/30">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-orange-600 text-white rounded-2xl shadow-lg shadow-orange-600/30">
-                                    <ShoppingBag size={24} strokeWidth={2.5} />
+                        {/* Header */}
+                        <div className="shrink-0 flex items-center justify-between p-6 bg-white border-b border-slate-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-orange-600 text-white rounded-xl flex items-center justify-center shadow-sm">
+                                    <ShoppingBag size={20} strokeWidth={2.2} />
                                 </div>
-                                <div className="flex flex-col">
-                                    <div className="flex items-center gap-2">
-                                        <h2 className="text-2xl font-black text-slate-900 leading-none">سلة المشتريات</h2>
-                                        <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-black rounded-lg uppercase tracking-wider">Premium</span>
-                                    </div>
-                                    <p className="text-xs font-bold text-slate-500 mt-1">{totalItems} {totalItems === 1 ? 'منتج' : 'منتجات'}</p>
+                                <div>
+                                    <h2 className="text-lg font-black text-slate-900 leading-none">سلة التسوق</h2>
+                                    <p className="text-xs font-bold text-slate-500 mt-1">{totalItems === 0 ? 'فارغة' : `${totalItems} ${totalItems === 1 ? 'منتج' : 'منتجات'}`}</p>
                                 </div>
                             </div>
                             <button
                                 onClick={closeCart}
-                                className="p-2.5 rounded-full bg-slate-100/50 text-slate-400 hover:bg-orange-500 hover:text-white transition-all duration-300 transform hover:rotate-90"
+                                aria-label="إغلاق"
+                                className="w-9 h-9 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all"
                             >
-                                <X size={20} />
+                                <X size={16} />
                             </button>
                         </div>
 
-                        {/* Cart Items */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                        {/* Items - single scroll container */}
+                        <div className="flex-1 overflow-y-auto overscroll-contain">
                             {cartItems.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center space-y-6 pt-20">
-                                    <div className="relative">
-                                        <div className="absolute inset-0 bg-orange-100 blur-3xl rounded-full opacity-30 animate-pulse"></div>
-                                        <ShoppingBag size={80} className="text-orange-200 relative z-10" />
+                                <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 gap-6">
+                                    <div className="w-24 h-24 bg-orange-50 border border-orange-100 rounded-3xl flex items-center justify-center">
+                                        <ShoppingBag size={40} className="text-orange-300" />
                                     </div>
                                     <div>
-                                        <p className="text-xl font-black text-slate-900">سلة المشتريات فارغة</p>
-                                        <p className="text-sm text-slate-500 mt-2 font-medium">ابدأ بإضافة منتجات لتعود إليها لاحقاً</p>
+                                        <p className="text-xl font-black text-slate-900">سلتك فارغة</p>
+                                        <p className="text-sm text-slate-500 mt-2 leading-relaxed">ابدأ بإضافة منتجاتك المفضلة<br/>واستكشف عروضنا المميزة</p>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={closeCart}
-                                        className="px-10 py-4 bg-orange-600 text-white rounded-[2rem] font-black hover:bg-orange-500 transition-all text-sm shadow-xl shadow-orange-600/20 active:scale-95"
+                                        className="w-full max-w-[260px] py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-orange-600 transition-colors shadow-lg"
                                     >
-                                        استكشف المتجر
+                                        تابع التسوق
                                     </button>
                                 </div>
                             ) : (
-                                <div className="p-4 sm:p-6 overflow-y-auto overflow-x-hidden flex-1 scrollbar-thin scrollbar-thumb-slate-200">
-                                    <div className="space-y-4 px-2">
-                                        <AnimatePresence mode="popLayout" initial={false}>
-                                            {cartItems.map((item) => (
+                                <div className="p-4 space-y-3">
+                                    {cartItems.length > 1 && (
+                                        <div className="flex justify-between items-center pb-2">
+                                            <span className="text-xs font-bold text-slate-400">{cartItems.length} منتجات</span>
+                                            <button onClick={clearCart} className="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1">
+                                                <Trash2 size={12} /> إفراغ السلة
+                                            </button>
+                                        </div>
+                                    )}
+                                    <AnimatePresence mode="popLayout" initial={false}>
+                                        {cartItems.map((item) => {
+                                            const isLowStock = item.stock_quantity !== undefined && item.stock_quantity !== null && item.quantity >= item.stock_quantity;
+                                            const unitPrice = Number(item.price) || 0;
+                                            return (
                                                 <motion.div
                                                     key={`${item.id}-${JSON.stringify(item.options)}`}
                                                     layout
-                                                    initial={{ opacity: 0, y: 20 }}
+                                                    initial={{ opacity: 0, y: 12 }}
                                                     animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, x: -20 }}
-                                                    className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex gap-4"
+                                                    exit={{ opacity: 0, scale: 0.95 }}
+                                                    className="bg-white p-3 rounded-2xl border border-slate-200 flex gap-3 hover:border-slate-300 hover:shadow-sm transition-all"
                                                 >
-                                                    <img src={item.image_url || item.image} alt={item.name} className="w-20 h-20 rounded-2xl object-cover bg-slate-100" />
-                                                    <div className="flex-1 flex flex-col justify-between">
+                                                    <img
+                                                        src={item.image_url || item.image || 'https://placehold.co/100x100/f1f5f9/94a3b8?text=IMG'}
+                                                        alt={item.name}
+                                                        className="w-20 h-20 rounded-xl object-cover bg-slate-50 border border-slate-100 shrink-0"
+                                                        onError={(e)=> e.target.src='https://placehold.co/100x100/f1f5f9/94a3b8?text=IMG'}
+                                                    />
+                                                    <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
                                                         <div>
-                                                            <div className="flex justify-between items-start">
-                                                                <h3 className="font-black text-slate-900 text-sm">{item.name}</h3>
-                                                                <button onClick={() => removeFromCart(item.id, item.options)} className="text-slate-300 hover:text-red-500 transition-colors">
-                                                                    <Trash2 size={16} />
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <h3 className="font-bold text-slate-900 text-sm leading-tight line-clamp-2 flex-1">{item.name}</h3>
+                                                                <button
+                                                                    onClick={() => removeFromCart(item.id, item.options)}
+                                                                    aria-label="حذف"
+                                                                    className="w-7 h-7 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors shrink-0"
+                                                                >
+                                                                    <Trash2 size={12} />
                                                                 </button>
                                                             </div>
-                                                            {item.options && Object.entries(item.options).map(([key, value]) => (
-                                                                <span key={key} className="text-[10px] text-slate-400 font-bold bg-slate-50 px-2 py-0.5 rounded-md mr-1">
-                                                                    {value}
-                                                                </span>
-                                                            ))}
+                                                            {item.options && Object.keys(item.options).length > 0 && (
+                                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                                    {Object.entries(item.options).map(([k, v]) => (
+                                                                        <span key={k} className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                                                            {String(v)}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {isLowStock && (
+                                                                <div className="flex items-center gap-1 mt-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 w-fit">
+                                                                    <AlertTriangle size={10} /> المتاح: {item.stock_quantity}
+                                                                </div>
+                                                            )}
                                                         </div>
 
-                                                        {/* Price + Qty row */}
-                                                        <div className="mt-3 flex items-center justify-between gap-3" dir="rtl">
-
-                                                            {/* Price pill */}
-                                                            <div className="flex flex-col items-start gap-0.5">
-                                                                <div className="flex items-baseline gap-1.5 bg-gradient-to-l from-orange-50 to-amber-50 border border-orange-100/60 rounded-2xl px-3 py-1.5">
-                                                                    <span className="text-xl font-black text-orange-600 font-sans leading-none tracking-tight">
-                                                                        {formatPrice((Number(item.price) || 0) * item.quantity)}
-                                                                    </span>
-                                                                </div>
+                                                        <div className="mt-2 flex items-center justify-between gap-2">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[15px] font-black text-slate-900 leading-none">{formatPrice(unitPrice * item.quantity)}</span>
                                                                 {item.quantity > 1 && (
-                                                                    <span className="text-[10px] text-slate-400 font-semibold px-1">
-                                                                        {formatPrice(Number(item.price) || 0)} × {item.quantity}
-                                                                    </span>
+                                                                    <span className="text-[10px] text-slate-400 font-bold mt-0.5">{formatPrice(unitPrice)} × {item.quantity}</span>
                                                                 )}
                                                             </div>
 
-                                                            {/* Qty stepper */}
-                                                            <div className="flex items-center bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm shrink-0">
+                                                            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-full p-1 gap-1 shrink-0">
                                                                 <button
                                                                     onClick={() => updateQuantity(item.id, -1, item.options)}
-                                                                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-orange-600 hover:bg-orange-50 transition-all"
+                                                                    disabled={item.quantity <= 1}
+                                                                    aria-label="إنقاص"
+                                                                    className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
                                                                 >
-                                                                    <Minus size={13} />
+                                                                    <Minus size={12} />
                                                                 </button>
-                                                                <span className="w-8 text-center text-sm font-black text-slate-900 font-sans border-x border-slate-100">{item.quantity}</span>
+                                                                <span className="w-7 text-center text-sm font-black text-slate-900">{item.quantity}</span>
                                                                 <button
                                                                     onClick={() => updateQuantity(item.id, 1, item.options)}
-                                                                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-orange-600 hover:bg-orange-50 transition-all"
+                                                                    disabled={isLowStock}
+                                                                    aria-label="زيادة"
+                                                                    className="w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
                                                                 >
-                                                                    <Plus size={13} />
+                                                                    <Plus size={12} />
                                                                 </button>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </motion.div>
-                                            ))}
-                                        </AnimatePresence>
-                                    </div>
+                                            );
+                                        })}
+                                    </AnimatePresence>
                                 </div>
                             )}
                         </div>
 
-                        {/* Footer - Floating Glass Effect */}
+                        {/* Footer - sticky bottom */}
                         {cartItems.length > 0 && (
-                            <div className="p-8 bg-white/80 backdrop-blur-2xl border-t border-white/20 shadow-[0_-20px_50px_rgba(0,0,0,0.05)]">
-                                <div className="space-y-4 mb-8">
-                                    <div className="flex justify-between items-center text-slate-500 font-bold">
-                                        <span>المجموع الفرعي</span>
-                                        <span>{formatPrice(subtotal)}</span>
+                            <div className="shrink-0 p-6 bg-white border-t border-slate-100 shadow-[0_-8px_24px_rgba(0,0,0,0.04)]">
+                                <div className="space-y-2.5 mb-5">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500 font-bold">المجموع الفرعي</span>
+                                        <span className="font-bold text-slate-900">{formatPrice(subtotal)}</span>
                                     </div>
-                                    <div className="flex justify-between items-center text-slate-400 text-xs font-bold">
-                                        <span>الشحن</span>
-                                        <span className="text-orange-500">يُحسب عند الدفع</span>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-400 font-bold">الشحن</span>
+                                        <span className="font-black text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full text-[11px]">مجاني</span>
                                     </div>
-                                    <div className="pt-4 border-t border-slate-100 flex justify-between items-end">
-                                        <div className="flex flex-col">
-                                            <span className="text-xs text-slate-400 font-black uppercase tracking-widest mb-1">الإجمالي التقريبي</span>
-                                            <span className="text-3xl font-black text-slate-900 leading-none">
-                                                {formatPrice(subtotal)}
-                                            </span>
-                                        </div>
+                                    <div className="pt-3 mt-1 border-t border-slate-100 flex justify-between items-center">
+                                        <span className="text-sm font-black text-slate-900">الإجمالي</span>
+                                        <span className="text-xl font-black text-slate-900">{formatPrice(subtotal)}</span>
                                     </div>
                                 </div>
 
-                                <motion.button
-                                    whileHover={{ scale: 1.02, translateY: -2 }}
-                                    whileTap={{ scale: 0.98 }}
+                                <button
                                     onClick={handleCheckout}
-                                    className="w-full py-5 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-orange-600/20 hover:shadow-orange-600/40 transition-all flex items-center justify-center gap-3 group"
+                                    className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black text-[15px] flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-600/15 active:scale-[0.98]"
                                 >
-                                    <span>متابعة إتمام الطلب</span>
-                                    <ArrowLeft size={22} className="transition-transform group-hover:-translate-x-2 text-white/80" />
-                                </motion.button>
-                                
-                                <p className="text-center text-[10px] text-slate-400 font-bold mt-4">
-                                    تسوق آمن 100% • دفع عند الاستلام • إرجاع سهل
-                                </p>
+                                    متابعة الطلب
+                                    <ArrowLeft size={18} />
+                                </button>
+                                <button
+                                    onClick={closeCart}
+                                    className="w-full mt-3 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-colors"
+                                >
+                                    متابعة التسوق
+                                </button>
+                                <p className="text-center text-[10px] font-bold text-slate-400 mt-3">دفع آمن • استرجاع خلال 14 يوم</p>
                             </div>
                         )}
                     </motion.div>

@@ -200,7 +200,7 @@ const ProductView = () => {
                                             ><Minus size={16} /></button>
                                             <span style={{ width: '36px', textAlign: 'center', fontWeight: 900, fontSize: '16px', color: '#0f172a', fontFamily: 'sans-serif' }}>{qty}</span>
                                             <button
-                                                onClick={() => setQty(qty + 1)}
+                                                onClick={() => setQty(prev => product.stock_quantity ? Math.min(product.stock_quantity, prev + 1) : prev + 1)}
                                                 style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '10px', color: '#64748b', transition: 'all 0.2s' }}
                                                 onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#0f172a'; }}
                                                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; }}
@@ -259,6 +259,11 @@ const ProductView = () => {
                             </a>
                         </div>
 
+                        {product.stock_quantity !== null && product.stock_quantity <= 5 && product.stock_quantity > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', color: '#92400e', fontSize: '12px', fontWeight: 700 }}>
+                                <AlertTriangle size={14} /> متبقي {product.stock_quantity} فقط في المخزون
+                            </div>
+                        )}
                         {/* Description */}
                         {product.description && (
                             <div style={{ background: '#fff', border: '1.5px solid #f1f5f9', borderRadius: '20px', padding: '24px' }}>
