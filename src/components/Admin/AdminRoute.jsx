@@ -54,9 +54,6 @@ const AdminRoute = () => {
                         <Home size={18} /> العودة للمتجر
                     </Link>
                 </div>
-                <p style={{ marginTop: '16px', fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>
-                    تلميح: بعد تسجيل الدخول، ارجع إلى /admin مرة أخرى. أو شغّل ملف supabase/make_admin_email.sql في Supabase SQL Editor لترقية حسابك.
-                </p>
             </div>
         </div>
     );
