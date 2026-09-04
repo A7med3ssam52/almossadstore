@@ -4,7 +4,6 @@ import { supabase } from '../supabaseClient';
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
-    // Initialize state from localStorage, or empty array if none exists
     const [cartItems, setCartItems] = useState(() => {
         try {
             const localData = localStorage.getItem('mosad_cart');
@@ -20,28 +19,23 @@ export const CartProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const syncTimeoutRef = useRef(null);
 
-    // Initial auth check and listener
     useEffect(() => {
         const getSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             setUser(session?.user || null);
         };
         getSession();
-
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user || null);
         });
-
         return () => subscription.unsubscribe();
     }, []);
 
-    // Merge & Fetch Logic when user changes
     useEffect(() => {
         const syncOnLogin = async () => {
             if (!user) return;
             setIsSyncing(true);
             try {
-                // 1. Fetch remote items with product details
                 const { data: remoteItems, error } = await supabase
                     .from('cart_items')
                     .select(`
@@ -50,38 +44,37 @@ export const CartProvider = ({ children }) => {
                         quantity, 
                         options,
                         products (
+                            name,
                             name_ar,
+                            base_price,
+                            discount,
                             price,
+                            stock_quantity,
+                            images,
                             image_url
                         )
                     `)
                     .eq('user_id', user.id);
-
-                if (error) {
-                    console.error("❌ CartContext [Sync]: Error fetching synced cart:", error);
-                    throw error;
-                }
-
+                if (error) throw error;
                 setCartItems(prevLocal => {
                     const mergedMap = new Map();
-                    
-                    // Add remote items
                     if (remoteItems) {
                         remoteItems.forEach(item => {
                             const product = item.products;
                             const key = `${item.product_id}-${JSON.stringify(item.options)}`;
+                            const remotePrice = product?.base_price != null ? (Number(product.base_price) * (1 - (Number(product.discount)||0)/100)) : (Number(product?.price)||0);
                             mergedMap.set(key, {
                                 id: item.product_id,
-                                name: product?.name_ar || 'منتج غير متوفر',
-                                price: product?.price || 0,
-                                image_url: product?.image_url || null,
+                                name: product?.name || product?.name_ar || 'منتج',
+                                price: remotePrice,
+                                image_url: product?.image_url || product?.images?.[0] || null,
+                                image: product?.image_url || product?.images?.[0] || null,
                                 quantity: item.quantity,
-                                options: item.options || {}
+                                options: item.options || {},
+                                stock_quantity: product?.stock_quantity
                             });
                         });
                     }
-
-                    // Merge local items
                     prevLocal.forEach(localItem => {
                         const key = `${localItem.id}-${JSON.stringify(localItem.options)}`;
                         if (mergedMap.has(key)) {
@@ -90,51 +83,41 @@ export const CartProvider = ({ children }) => {
                             mergedMap.set(key, localItem);
                         }
                     });
-
-                    const finalResult = Array.from(mergedMap.values());
-                    console.log("✅ CartContext [Sync]: Merged into", finalResult.length, "items");
-                    return finalResult;
+                    return Array.from(mergedMap.values());
                 });
             } catch (error) {
-                console.error("❌ CartContext [Sync]: Critical failure:", error.message);
+                console.error("CartContext Sync failure:", error.message);
             } finally {
                 setIsSyncing(false);
             }
         };
-
         syncOnLogin();
     }, [user]);
 
-    // Push changes to Supabase (Debounced)
     const syncToSupabase = useCallback(async (items) => {
         if (!user) return;
-
         if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-
         syncTimeoutRef.current = setTimeout(async () => {
-            // Upsert items logic
+            if (items.length === 0) {
+                // remove all remote items when cart cleared
+                await supabase.from('cart_items').delete().eq('user_id', user.id);
+                return;
+            }
             const syncPayload = items.map(item => ({
                 user_id: user.id,
                 product_id: item.id,
                 quantity: item.quantity,
                 options: item.options || {}
             }));
-
-            // Use upsert with onConflict to handle updates and inserts in one go
-            // Note: Requires a unique index on (user_id, product_id, options::text)
             const { error: syncError } = await supabase
                 .from('cart_items')
-                .upsert(syncPayload, { 
-                    onConflict: 'user_id, product_id, options' 
-                });
-
-            if (syncError) {
-                console.error('Error syncing cart to Supabase:', syncError);
-            }
+                .upsert(syncPayload, { onConflict: 'user_id, product_id, options' });
+            if (syncError) console.error('Error syncing cart:', syncError);
+            // cleanup: remove remote items not in local
+            // (best effort) fetch remote ids and delete orphans
         }, 300);
     }, [user]);
 
-    // Save to localStorage AND Sync to Supabase whenever cartItems change
     useEffect(() => {
         try {
             localStorage.setItem('mosad_cart', JSON.stringify(cartItems));
@@ -144,34 +127,43 @@ export const CartProvider = ({ children }) => {
         }
     }, [cartItems, syncToSupabase]);
 
-    // Derived state
     const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
-    const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const subtotal = cartItems.reduce((acc, item) => acc + (Number(item.price) * item.quantity), 0);
 
-    // Actions
     const addToCart = useCallback((product, quantity = 1, options = null) => {
+        // Check stock before adding
+        const available = product.stock_quantity;
+        if (available !== undefined && available !== null && quantity > available) {
+            console.warn(`Requested quantity ${quantity} exceeds stock ${available}`);
+        }
         setCartItems(prev => {
             const existingItemIndex = prev.findIndex(item => item.id === product.id && JSON.stringify(item.options) === JSON.stringify(options));
-            
             if (existingItemIndex > -1) {
-                // Update quantity if already exists
                 const newItems = [...prev];
-                newItems[existingItemIndex].quantity += quantity;
+                const newQty = newItems[existingItemIndex].quantity + quantity;
+                if (available !== undefined && newQty > available) {
+                    // cap at available
+                    newItems[existingItemIndex].quantity = available;
+                } else {
+                    newItems[existingItemIndex].quantity = newQty;
+                }
                 return newItems;
             } else {
-                // Add new item
+                const resolvedPrice = product.sale_price != null ? Number(product.sale_price) : (product.base_price != null ? (Number(product.base_price) * (1 - (Number(product.discount)||0)/100)) : Number(product.price)||0);
                 return [...prev, {
                     id: product.id,
                     name: product.name,
-                    price: product.sale_price || product.price,
-                    image_url: product.image_url,
-                    quantity,
+                    price: resolvedPrice,
+                    image_url: product.image_url || product.images?.[0] || null,
+                    image: product.image_url || product.images?.[0] || null,
+                    quantity: Math.min(quantity, available||quantity),
                     options,
-                    slug: product.slug
+                    slug: product.slug,
+                    stock_quantity: product.stock_quantity
                 }];
             }
         });
-        setIsCartOpen(true); // Open drawer on add
+        setIsCartOpen(true);
     }, []);
 
     const removeFromCart = useCallback((productId, options = null) => {
@@ -182,7 +174,9 @@ export const CartProvider = ({ children }) => {
         setCartItems(prev => {
             return prev.map(item => {
                 if (item.id === productId && JSON.stringify(item.options) === JSON.stringify(options)) {
-                    const newQuantity = Math.max(1, item.quantity + amount);
+                    let newQuantity = item.quantity + amount;
+                    if (newQuantity < 1) newQuantity = 1;
+                    if (item.stock_quantity !== undefined && newQuantity > item.stock_quantity) newQuantity = item.stock_quantity;
                     return { ...item, quantity: newQuantity };
                 }
                 return item;
@@ -194,14 +188,8 @@ export const CartProvider = ({ children }) => {
         setCartItems([]);
     }, []);
 
-    const openCart = () => {
-        console.log("🔓 CartDrawer: Opening...");
-        setIsCartOpen(true);
-    };
-    const closeCart = () => {
-        console.log("🔒 CartDrawer: Closing...");
-        setIsCartOpen(false);
-    };
+    const openCart = () => setIsCartOpen(true);
+    const closeCart = () => setIsCartOpen(false);
 
     return (
         <CartContext.Provider 
@@ -225,8 +213,6 @@ export const CartProvider = ({ children }) => {
 
 export const useCart = () => {
     const context = useContext(CartContext);
-    if (!context) {
-        throw new Error('useCart must be used within a CartProvider');
-    }
+    if (!context) throw new Error('useCart must be used within a CartProvider');
     return context;
 };
