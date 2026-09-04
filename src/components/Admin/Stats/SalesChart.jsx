@@ -25,6 +25,8 @@ const defaultData = [
  * Visualizes sales and revenue using a smooth AreaChart from Recharts.
  */
 const SalesChart = ({ data = defaultData, activeDays = 7, onTimeframeChange }) => {
+    const isEmpty = !data || data.length === 0 || data.every((d) => (Number(d.sales) || 0) === 0 && (Number(d.revenue) || 0) === 0);
+
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
@@ -57,67 +59,73 @@ const SalesChart = ({ data = defaultData, activeDays = 7, onTimeframeChange }) =
             </div>
 
             <div className="h-[350px] w-full font-sans">
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data}>
-                        <defs>
-                            <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
-                                <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                            </linearGradient>
-                            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2} />
-                                <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                        <XAxis
-                            dataKey="name"
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 800 }}
-                            dy={15}
-                        />
-                        <YAxis
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 800 }}
-                            dx={-15}
-                        />
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: '#ffffff',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '16px',
-                                backdropFilter: 'blur(20px)',
-                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                                color: '#0f172a',
-                                fontSize: '12px',
-                                fontWeight: 'bold',
-                                textAlign: 'right'
-                            }}
-                            itemStyle={{ color: '#0f172a' }}
-                            cursor={{ stroke: '#f97316', strokeWidth: 2, strokeDasharray: '5 5' }}
-                        />
-                        <Area
-                            type="monotone"
-                            dataKey="sales"
-                            stroke="#f97316"
-                            strokeWidth={3}
-                            fillOpacity={1}
-                            fill="url(#colorSales)"
-                            animationDuration={2000}
-                        />
-                        <Area
-                            type="monotone"
-                            dataKey="revenue"
-                            stroke="#2563eb"
-                            strokeWidth={3}
-                            fillOpacity={1}
-                            fill="url(#colorRevenue)"
-                            animationDuration={2500}
-                        />
-                    </AreaChart>
-                </ResponsiveContainer>
+                {isEmpty ? (
+                    <div className="flex h-full w-full items-center justify-center">
+                        <p className="text-center text-slate-400 font-bold text-sm">لا يوجد بيانات مبيعات</p>
+                    </div>
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={data}>
+                            <defs>
+                                <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                            <XAxis
+                                dataKey="name"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 800 }}
+                                dy={15}
+                            />
+                            <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 800 }}
+                                dx={-15}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: '#ffffff',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '16px',
+                                    backdropFilter: 'blur(20px)',
+                                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                                    color: '#0f172a',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                    textAlign: 'right'
+                                }}
+                                itemStyle={{ color: '#0f172a' }}
+                                cursor={{ stroke: '#f97316', strokeWidth: 2, strokeDasharray: '5 5' }}
+                            />
+                            <Area
+                                type="monotone"
+                                dataKey="sales"
+                                stroke="#f97316"
+                                strokeWidth={3}
+                                fillOpacity={1}
+                                fill="url(#colorSales)"
+                                animationDuration={2000}
+                            />
+                            <Area
+                                type="monotone"
+                                dataKey="revenue"
+                                stroke="#2563eb"
+                                strokeWidth={3}
+                                fillOpacity={1}
+                                fill="url(#colorRevenue)"
+                                animationDuration={2500}
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                )}
             </div>
 
             <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-slate-100 rounded-full blur-[80px] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
@@ -126,4 +134,3 @@ const SalesChart = ({ data = defaultData, activeDays = 7, onTimeframeChange }) =
 };
 
 export default SalesChart;
-

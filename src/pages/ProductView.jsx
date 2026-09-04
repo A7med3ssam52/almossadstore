@@ -9,7 +9,7 @@ import {
 import { getProductById } from '@/services/supabase/inventoryService';
 import ProductGallery from '@/components/ProductDetails/ProductGallery';
 import { useCart } from '../context/CartContext';
-import { formatPrice } from '@/utils/formatters';
+import { formatPrice, getDiscountedPrice, getOriginalPrice, hasDiscount as hasProductDiscount, getProductImage } from '@/utils/formatters';
 
 const PLACEHOLDER_IMAGE = 'https://placehold.co/600x600/f1f5f9/94a3b8?text=%D8%A2%D9%84+%D9%85%D8%B3%D8%B9%D8%AF';
 
@@ -89,10 +89,10 @@ const ProductView = () => {
     );
 
     const isOutOfStock = product.stock_quantity === 0;
-    const hasDiscount = (product.discount ?? 0) > 0;
-    const basePrice = parseFloat(product.base_price) || 0;
-    const discountedPrice = hasDiscount ? basePrice * (1 - product.discount / 100) : basePrice;
-    const mainImage = product.images?.[0] || PLACEHOLDER_IMAGE;
+    const hasDiscount = hasProductDiscount(product);
+    const basePrice = getOriginalPrice(product);
+    const discountedPrice = getDiscountedPrice(product);
+    const mainImage = getProductImage(product) || PLACEHOLDER_IMAGE;
 
     return (
         <div style={{ minHeight: '100vh', background: '#f8fafc', paddingBottom: '80px' }} dir="rtl">
@@ -116,7 +116,7 @@ const ProductView = () => {
 
                     {/* LEFT: Gallery */}
                     <div className="pv-sticky" style={{ position: 'sticky', top: '20px' }}>
-                        <ProductGallery images={product.images?.length > 0 ? product.images : [PLACEHOLDER_IMAGE]} />
+                        <ProductGallery images={product.images?.length > 0 ? product.images : [mainImage]} />
                         {product.is_featured && (
                             <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -164,14 +164,14 @@ const ProductView = () => {
                             background: '#fff', border: '1.5px solid #f1f5f9', borderRadius: '24px',
                             padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
                         }}>
-                            {product.base_price > 0 ? (
+                            {(discountedPrice > 0 || basePrice > 0) ? (
                                 <>
                                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '4px' }}>
                                         <span style={{ fontSize: '42px', fontWeight: 900, color: '#0f172a', fontFamily: 'sans-serif', letterSpacing: '-0.03em' }}>
-                                            {Number(hasDiscount ? discountedPrice : basePrice).toLocaleString()}
+                                            {Number(discountedPrice).toLocaleString()}
                                         </span>
                                         <span style={{ fontSize: '16px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>ج.م</span>
-                                        {hasDiscount && (
+                                        {hasDiscount && basePrice > discountedPrice && (
                                             <span style={{ fontSize: '18px', color: '#cbd5e1', textDecoration: 'line-through', fontFamily: 'sans-serif' }}>
                                                 {Number(basePrice).toLocaleString()}
                                             </span>

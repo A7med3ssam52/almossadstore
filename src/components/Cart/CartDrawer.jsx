@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useNavigate } from 'react-router-dom';
+import { formatPrice } from '@/utils/formatters';
 
 const CartDrawer = () => {
     const { isCartOpen, closeCart, cartItems, totalItems, subtotal, updateQuantity, removeFromCart } = useCart();
@@ -144,13 +145,12 @@ const CartDrawer = () => {
                                                             <div className="flex flex-col items-start gap-0.5">
                                                                 <div className="flex items-baseline gap-1.5 bg-gradient-to-l from-orange-50 to-amber-50 border border-orange-100/60 rounded-2xl px-3 py-1.5">
                                                                     <span className="text-xl font-black text-orange-600 font-sans leading-none tracking-tight">
-                                                                        {((parseFloat(item.price) || 0) * item.quantity).toLocaleString()}
+                                                                        {formatPrice((Number(item.price) || 0) * item.quantity)}
                                                                     </span>
-                                                                    <span className="text-[11px] font-black text-orange-400 mb-0.5">ج.م</span>
                                                                 </div>
                                                                 {item.quantity > 1 && (
                                                                     <span className="text-[10px] text-slate-400 font-semibold px-1">
-                                                                        {(parseFloat(item.price) || 0).toLocaleString()} × {item.quantity}
+                                                                        {formatPrice(Number(item.price) || 0)} × {item.quantity}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -187,7 +187,7 @@ const CartDrawer = () => {
                                 <div className="space-y-4 mb-8">
                                     <div className="flex justify-between items-center text-slate-500 font-bold">
                                         <span>المجموع الفرعي</span>
-                                        <span>{subtotal.toLocaleString()} ج.م</span>
+                                        <span>{formatPrice(subtotal)}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-slate-400 text-xs font-bold">
                                         <span>الشحن</span>
@@ -197,7 +197,7 @@ const CartDrawer = () => {
                                         <div className="flex flex-col">
                                             <span className="text-xs text-slate-400 font-black uppercase tracking-widest mb-1">الإجمالي التقريبي</span>
                                             <span className="text-3xl font-black text-slate-900 leading-none">
-                                                {subtotal.toLocaleString()} <span className="text-sm">ج.م</span>
+                                                {formatPrice(subtotal)}
                                             </span>
                                         </div>
                                     </div>

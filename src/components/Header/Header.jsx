@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { User, ShoppingCart, Search, Globe, LogOut, ChevronDown, ShieldCheck, Package } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { checkIsAdmin } from '../../services/supabase/adminClient';
 import { useCart } from '../../context/CartContext';
+import { getProducts } from '@/services/supabase/inventoryService';
 import './Header.css';
 import './AccountDropdown.css';
 
@@ -11,11 +12,33 @@ const Header = () => {
   const navigate = useNavigate();
   const { totalItems, subtotal, openCart } = useCart();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedTerm, setDebouncedTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [products, setProducts] = useState([]);
+
+  // Debounce search input 300ms
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedTerm(searchTerm.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // Load product names for real search
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await getProducts();
+        if (!cancelled && Array.isArray(data)) setProducts(data);
+      } catch (e) {
+        void e;
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     // Get initial session
@@ -45,7 +68,22 @@ const Header = () => {
     navigate('/');
   };
 
-  const suggestions = ['عدد يدوية', 'بويات جوتن', 'سباكة خلاطات', 'كهرباء كابلات', 'باب حديد'];
+  const suggestions = useMemo(() => ['عدد يدوية', 'بويات جوتن', 'سباكة خلاطات', 'كهرباء كابلات', 'باب حديد'], []);
+
+  // Compute filtered suggestions: prefer real product names, fallback to static
+  const { filteredCombined, hasResults } = useMemo(() => {
+    if (!debouncedTerm) return { filteredCombined: [], hasResults: false };
+    const term = debouncedTerm;
+    const filteredProducts = products
+      .filter(p => (p.name && p.name.includes(term)) || (p.name_ar && p.name_ar.includes(term)))
+      .slice(0, 6)
+      .map(p => p.name || p.name_ar);
+    const filteredStatic = suggestions.filter(s => s.includes(term));
+    // Prefer product results if any, otherwise static; deduplicate
+    const combined = filteredProducts.length > 0 ? filteredProducts : filteredStatic;
+    const deduped = [...new Set(combined)].slice(0, 6);
+    return { filteredCombined: deduped, hasResults: deduped.length > 0 };
+  }, [debouncedTerm, products, suggestions]);
 
   return (
     <header className="site-header">
@@ -88,20 +126,27 @@ const Header = () => {
               <span>بحث</span>
             </button>
 
-            {showSuggestions && searchTerm.length > 0 && (
+            {showSuggestions && debouncedTerm.length > 0 && (
               <div className="search-suggestions animate-fade-in">
-                {suggestions
-                  .filter(s => s.includes(searchTerm))
-                  .map((s, i) => (
+                {hasResults ? (
+                  filteredCombined.map((s, i) => (
                     <div
                       key={i}
                       className="suggestion-item"
-                      onMouseDown={() => setSearchTerm(s)}
+                      onMouseDown={() => {
+                        setSearchTerm(s);
+                        setShowSuggestions(false);
+                      }}
                     >
                       <Search size={14} />
                       <span>{s}</span>
                     </div>
-                  ))}
+                  ))
+                ) : (
+                  <div className="suggestion-item" style={{ justifyContent: 'center', color: '#94a3b8', cursor: 'default' }}>
+                    لا توجد نتائج
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -201,11 +246,10 @@ const Header = () => {
               </button>
             </div>
             
-            {searchTerm.length > 0 && (
+            {debouncedTerm.length > 0 && (
               <div className="overlay-suggestions animate-slide-up">
-                {suggestions
-                  .filter(s => s.includes(searchTerm))
-                  .map((s, i) => (
+                {hasResults ? (
+                  filteredCombined.map((s, i) => (
                     <div
                       key={i}
                       className="overlay-suggestion-item"
@@ -217,7 +261,12 @@ const Header = () => {
                       <Search size={18} />
                       <span>{s}</span>
                     </div>
-                  ))}
+                  ))
+                ) : (
+                  <div className="overlay-suggestion-item" style={{ justifyContent: 'center', color: '#94a3b8', cursor: 'default' }}>
+                    لا توجد نتائج
+                  </div>
+                )}
               </div>
             )}
           </div>

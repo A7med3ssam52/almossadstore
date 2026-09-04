@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getProducts } from '@/services/supabase/inventoryService';
-import { formatPrice } from '@/utils/formatters';
+import { formatPrice, getDiscountedPrice, getOriginalPrice, hasDiscount as hasProductDiscount, getProductImage } from '@/utils/formatters';
 import { Star, ShoppingBag, Eye } from 'lucide-react';
 import './FlashSale.css';
 
@@ -9,15 +9,12 @@ const PLACEHOLDER_IMAGE = 'https://placehold.co/600x600/f1f5f9/94a3b8?text=%D8%A
 
 export const ProductCard = ({ product }) => {
     const [hovered, setHovered] = useState(false);
-    const mainImage = (product.images && product.images.length > 0)
-        ? product.images[0]
-        : PLACEHOLDER_IMAGE;
+    const mainImage = getProductImage(product) || PLACEHOLDER_IMAGE;
 
     const isOutOfStock = product.stock_quantity === 0;
-    const hasDiscount = product.discount > 0;
-    const discountedPrice = hasDiscount
-        ? product.base_price * (1 - product.discount / 100)
-        : null;
+    const hasDiscount = hasProductDiscount(product);
+    const discountedPrice = getDiscountedPrice(product);
+    const originalPrice = getOriginalPrice(product);
 
     return (
         <Link
@@ -82,13 +79,13 @@ export const ProductCard = ({ product }) => {
                 <p className="pc-cat-name">{product.categories?.name || 'آل مسعد'}</p>
                 <h3 className="pc-name">{product.name}</h3>
                 <div className="pc-price-row">
-                    {product.base_price > 0 ? (
+                    {discountedPrice > 0 || originalPrice > 0 ? (
                         <>
                             <span className="pc-price">
-                                {formatPrice(hasDiscount ? discountedPrice : product.base_price)}
+                                {formatPrice(discountedPrice)}
                             </span>
-                            {hasDiscount && (
-                                <span className="pc-old-price">{formatPrice(product.base_price)}</span>
+                            {hasDiscount && originalPrice > discountedPrice && (
+                                <span className="pc-old-price">{formatPrice(originalPrice)}</span>
                             )}
                         </>
                     ) : (

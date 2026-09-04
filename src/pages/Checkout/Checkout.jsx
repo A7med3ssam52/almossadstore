@@ -19,6 +19,7 @@ const Checkout = () => {
         fullName: '',
         phone: '',
         city: '',
+        otherCity: '',
         address: '',
         notes: ''
     });
@@ -72,6 +73,8 @@ const Checkout = () => {
         const phoneDigits = form.phone.replace(/\D/g,'');
         if (phoneDigits.length < 10 || phoneDigits.length > 15) { setErrorMsg('رقم الهاتف غير صحيح (10-15 رقم)'); return false; }
         if (!form.city) { setErrorMsg('اختر المدينة'); return false; }
+        if (form.city === 'مدينة أخرى' && !form.otherCity.trim()) { setErrorMsg('حدد المدينة'); return false; }
+        if (form.city === 'مدينة أخرى' && form.otherCity.trim().length < 2) { setErrorMsg('اسم المدينة غير صحيح'); return false; }
         if (!form.address.trim() || form.address.trim().length < 8) { setErrorMsg('العنوان يجب أن يكون 8 أحرف على الأقل'); return false; }
         // stock check before submit
         for (const item of cartItems) {
@@ -93,15 +96,18 @@ const Checkout = () => {
 
         let createdOrderId = null;
         try {
+            const resolvedCity = form.city === 'مدينة أخرى' ? form.otherCity.trim() : form.city;
             // Prepare shipping_address as JSON string for backward compat + structured
             const shippingAddressPayload = JSON.stringify({
-                city: form.city,
+                city: resolvedCity,
+                originalCity: form.city,
+                otherCity: form.city === 'مدينة أخرى' ? form.otherCity.trim() : null,
                 address: form.address,
                 phone: form.phone,
                 name: form.fullName
             });
             // Also keep legacy text for old readers: city - address
-            const legacyShippingText = `${form.city} - ${form.address}`;
+            const legacyShippingText = `${resolvedCity} - ${form.address}`;
 
             const { data, error } = await supabase.from('orders').insert({
                 user_id: user?.id || null,
@@ -230,6 +236,20 @@ const Checkout = () => {
                                             <option value="مدينة أخرى">مدينة أخرى</option>
                                         </select>
                                     </div>
+                                    {form.city === 'مدينة أخرى' && (
+                                        <div className="animate-fade-in">
+                                            <label className={labelClasses}>حدد المدينة</label>
+                                            <input
+                                                required
+                                                name="otherCity"
+                                                value={form.otherCity}
+                                                onChange={handleInputChange}
+                                                type="text"
+                                                placeholder="اكتب اسم مدينتك..."
+                                                className={inputClasses}
+                                            />
+                                        </div>
+                                    )}
                                     <div>
                                         <label className={labelClasses}>العنوان التفصيلي</label>
                                         <input required name="address" value={form.address} onChange={handleInputChange} type="text" placeholder="مثال: شارع 15، عمارة 3، شقة 12" className={inputClasses} />
