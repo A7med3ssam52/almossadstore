@@ -1,0 +1,311 @@
+.progress-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 2rem auto;
+    position: relative;
+    padding: 0 1rem;
+}
+
+.progress-track {
+    height: 10px;
+    background: #e2e8f0;
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ffae00, #ffc107);
+    box-shadow: 0 0 10px rgba(255, 174, 0, 0.4);
+    border-radius: 10px;
+}
+
+.paint-tube-cap {
+    position: absolute;
+    right: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 16px;
+    background: #475569;
+    border-radius: 2px;
+}
+
+.progress-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.progress-labels span.active {
+    color: #1F2933;
+}
+
+/* Stage Styles */
+.stage-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.illustration-box {
+    width: 220px;
+    height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    border-radius: 24px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    position: relative;
+}
+
+.stage-content {
+    width: 100%;
+    max-width: 450px;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #2d3436;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-align: right;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    color: #2d3436;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    text-align: right;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #1F2933;
+    box-shadow: 0 0 0 3px rgba(31, 41, 51, 0.1);
+}
+
+.stage-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    width: 100%;
+}
+
+.btn-next,
+.btn-submit {
+    padding: 0.85rem 2.5rem;
+    background: linear-gradient(135deg, #3A3F45 0%, #1F2933 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+}
+
+.btn-next:hover,
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0, 118, 114, 0.3);
+}
+
+.btn-back {
+    background: transparent;
+    border: 1px solid #cbd5e1;
+    color: #64748b;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+}
+
+.btn-back:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.micro-copy {
+    text-align: center;
+    color: #ffae00;
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.story-auth-container {
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    background: #f4f7f6;
+    color: #2d3436;
+    direction: rtl;
+    font-family: 'Cairo', sans-serif;
+}
+
+.story-stage-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2rem 0;
+}
+
+/* Card-like wrapper for the content */
+.story-stage-wrapper>.stage-boundary-wrapper {
+    background: white;
+    padding: 3rem;
+    border-radius: 24px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    max-width: 550px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Auth Feedback Messages (Inside card) */
+.auth-message-wrapper {
+    width: 100%;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.auth-error-message,
+.auth-success-message {
+    padding: 12px 16px;
+    border-radius: 12px;
+    text-align: right;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    line-height: 1.4;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.auth-error-message {
+    background: #fef2f2;
+    border: 1px solid #fee2e2;
+    color: #b91c1c;
+    border-right: 4px solid #ef4444;
+}
+
+.auth-success-message {
+    background: #f0fdf4;
+    border: 1px solid #dcfce7;
+    color: #15803d;
+    border-right: 4px solid #22c55e;
+}
+
+/* Modal Popup Overrides */
+.story-auth-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.story-auth-modal-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+}
+
+.auth-close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    background: #f1f5f9;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #64748b;
+    transition: all 0.2s ease;
+}
+
+.auth-close-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    transform: scale(1.05);
+}
+
+.story-auth-overlay .story-auth-container {
+    min-height: auto;
+    padding: 0;
+    background: transparent;
+}
+
+/* Responsive Adaptability */
+@media (max-width: 768px) {
+    .story-auth-container {
+        padding: 0.5rem;
+    }
+
+    .story-stage-wrapper>.stage-boundary-wrapper {
+        padding: 2rem 1.25rem;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    }
+    
+    .auth-close-btn {
+        top: 10px;
+        right: 10px;
+        width: 32px;
+        height: 32px;
+    }
+
+    .illustration-box {
+        width: 180px;
+        height: 180px;
+    }
+
+    .btn-next,
+    .btn-submit {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.95rem;
+    }
+}

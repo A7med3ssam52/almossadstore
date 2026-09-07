@@ -1,0 +1,12 @@
+import React from 'react';
+
+function App() {
+  return (
+    <div style={{ padding: '50px', textAlign: 'center', direction: 'rtl' }}>
+      <h1>آل مسعد - اختبار النظام</h1>
+      <p>إذا كنت ترى هذه الرسالة، فإن الأساس البرمجي يعمل بشكل صحيح.</p>
+    </div>
+  );
+}
+
+export default App;

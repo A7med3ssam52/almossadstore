@@ -1,0 +1,72 @@
+import React, { useState, useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import Header from './components/Header/Header';
+import Navbar from './components/Navbar/Navbar';
+import Home from './pages/Home';
+import StorySignup from './components/Auth/StorySignup';
+import StoryLogin from './components/Auth/StoryLogin';
+import WhatsAppWidget from './components/WhatsAppWidget/WhatsAppWidget';
+import Footer from './components/Footer/Footer';
+import MobileNav from './components/MobileNav/MobileNav';
+
+import AdminRoute from './components/Admin/AdminRoute';
+import AdminLayout from './components/Admin/Layout/AdminLayout';
+import AdminDashboard from './pages/Admin/Dashboard';
+
+function App() {
+  return (
+    <div className="app">
+      <Routes>
+        {/* Admin Routes (Protected) */}
+        <Route element={<AdminRoute />}>
+          <Route element={<AdminLayout />}>
+            <Route path="/admin" element={<AdminDashboard />} />
+            {/* Future Admin sub-routes will go here */}
+          </Route>
+        </Route>
+
+        {/* Public Storefront Routes */}
+        <Route path="/" element={
+          <>
+            <div className="header-navbar-wrapper">
+              <Header />
+              <Navbar />
+            </div>
+            <Home />
+            <Footer />
+            <MobileNav />
+            <WhatsAppWidget />
+          </>
+        } />
+
+        <Route path="/login" element={
+          <>
+            <div className="header-navbar-wrapper">
+              <Header />
+              <Navbar />
+            </div>
+            <StoryLogin />
+            <Footer />
+            <MobileNav />
+            <WhatsAppWidget />
+          </>
+        } />
+
+        <Route path="/signup" element={
+          <>
+            <div className="header-navbar-wrapper">
+              <Header />
+              <Navbar />
+            </div>
+            <StorySignup />
+            <Footer />
+            <MobileNav />
+            <WhatsAppWidget />
+          </>
+        } />
+      </Routes>
+    </div>
+  );
+}
+
+export default App;
