@@ -378,7 +378,7 @@ const Checkout = () => {
                             <h3 className="text-sm font-black text-slate-900 mb-3 flex items-center gap-2"><Ticket size={16} className="text-orange-600"/> كود الخصم {coupon && <span className="mr-auto text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-full">مُطبق من السلة</span>}</h3>
                             {!coupon ? (
                                 <div className="flex gap-2">
-                                    <input value={localCouponInput} onChange={e=>setLocalCouponInput(e.target.value.toUpperCase())} placeholder="WELCOME20" disabled={couponLoading} className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-mono tracking-widest text-center uppercase focus:outline-none focus:ring-2 focus:ring-orange-500/20 disabled:opacity-50" />
+                                    <input value={localCouponInput} onChange={e=>setLocalCouponInput(e.target.value.toUpperCase())} placeholder="أدخل كود الخصم" disabled={couponLoading} className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-orange-500/20 disabled:opacity-50 placeholder:text-slate-400" />
                                     <button type="button" onClick={handleApplyCoupon} disabled={couponLoading || !localCouponInput.trim()} className="px-5 py-3 bg-slate-900 text-white rounded-2xl text-sm font-bold hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2">
                                         {couponLoading ? <Loader2 size={14} className="animate-spin"/> : <Check size={14}/>} تطبيق
                                     </button>

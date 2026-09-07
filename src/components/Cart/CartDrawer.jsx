@@ -318,8 +318,8 @@ const CartDrawer = () => {
                                                         value={localCouponInput}
                                                         onChange={(e) => setLocalCouponInput(e.target.value.toUpperCase())}
                                                         onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
-                                                        placeholder="WELCOME20"
-                                                        className="flex-1 h-10 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm font-mono tracking-widest text-center uppercase placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-orange-500/15 focus:border-orange-300 transition"
+                                                        placeholder="أدخل كود الخصم"
+                                                        className="flex-1 h-10 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-orange-500/15 focus:border-orange-300 transition placeholder:text-slate-400"
                                                         disabled={couponLoading}
                                                     />
                                                     <button
