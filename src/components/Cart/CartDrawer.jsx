@@ -33,7 +33,6 @@ const CartDrawer = () => {
         shippingProgress,
         freeShippingRemaining,
         updateQuantity,
-        setQuantity,
         removeFromCart,
         clearCart,
         coupon,
@@ -49,7 +48,6 @@ const CartDrawer = () => {
     const closeBtnRef = useRef(null);
     const drawerRef = useRef(null);
     const [localCouponInput, setLocalCouponInput] = useState('');
-    const [qtyInputs, setQtyInputs] = useState({}); // {key: stringValue}
 
     // sync local coupon input with context when coupon changes
     useEffect(() => {
@@ -215,30 +213,23 @@ const CartDrawer = () => {
                                 </div>
                             </div>
 
-                            {/* Free shipping progress — only when not empty */}
+                            {/* Free shipping progress — minimal thin bar (B) */}
                             {!isEmpty && (
-                                <div className="px-5 pb-4">
-                                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
-                                        <div className="flex items-center justify-between text-[11px] font-black mb-2">
-                                            <span className={`flex items-center gap-1.5 ${isFreeShipping ? 'text-emerald-700' : 'text-slate-600'}`}>
-                                                <Truck size={14} className={isFreeShipping ? 'text-emerald-600' : 'text-slate-400'} />
-                                                {isFreeShipping ? 'مبروك! طلبك مؤهل للشحن المجاني 🎉' : `أضف ${formatPrice(freeShippingRemaining)} للشحن المجاني`}
-                                            </span>
-                                            <span className="text-slate-400 font-bold">{shippingProgress}%</span>
-                                        </div>
-                                        <div className="h-2 bg-white rounded-full border border-slate-200 overflow-hidden p-0.5">
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${shippingProgress}%` }}
-                                                transition={{ duration: 0.6, ease: 'easeOut' }}
-                                                className={`h-full rounded-full ${isFreeShipping ? 'bg-emerald-500' : 'bg-gradient-to-l from-orange-600 to-amber-500'}`}
-                                            />
-                                        </div>
-                                        {!isFreeShipping && (
-                                            <p className="text-[10px] font-bold text-slate-400 mt-1.5 text-center">
-                                                الشحن مجاني للطلبات فوق {formatPrice(FREE_SHIPPING_THRESHOLD)}
-                                            </p>
-                                        )}
+                                <div className="px-5 pb-3">
+                                    <div className="flex items-center justify-between text-[11px] font-bold mb-1.5">
+                                        <span className={`flex items-center gap-1.5 ${isFreeShipping ? 'text-emerald-700' : 'text-slate-600'}`}>
+                                            <Truck size={13} className={isFreeShipping ? 'text-emerald-600' : 'text-slate-400'} />
+                                            {isFreeShipping ? 'مبروك! طلبك مؤهل للشحن المجاني 🎉' : `أضف ${formatPrice(freeShippingRemaining)} للشحن المجاني`}
+                                        </span>
+                                        <span className="text-slate-400 font-semibold text-[10px]">{shippingProgress}%</span>
+                                    </div>
+                                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${shippingProgress}%` }}
+                                            transition={{ duration: 0.6, ease: 'easeOut' }}
+                                            className={`h-full rounded-full ${isFreeShipping ? 'bg-emerald-500' : 'bg-gradient-to-l from-orange-600 to-amber-500'}`}
+                                        />
                                     </div>
                                 </div>
                             )}
@@ -302,23 +293,23 @@ const CartDrawer = () => {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="p-4 space-y-3">
-                                    {/* Toolbar */}
+                                <div className="p-3 space-y-3">
+                                    {/* Toolbar — compact */}
                                     <div className="flex items-center justify-between">
-                                        <p className="text-[11px] font-black tracking-widest text-slate-400 uppercase">{cartItems.length} عناصر • {totalItems} قطعة</p>
+                                        <p className="text-[11px] font-bold tracking-wide text-slate-400">{cartItems.length} عناصر • {totalItems} قطعة</p>
                                         <button
                                             onClick={handleClearCart}
-                                            className="text-[12px] font-black text-slate-500 hover:text-red-600 flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-red-50 border border-transparent hover:border-red-100 transition-colors"
+                                            className="text-[11px] font-bold text-slate-500 hover:text-red-600 flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-red-50 border border-transparent hover:border-red-100 transition-colors"
                                         >
-                                            <Trash2 size={13} /> إفراغ
+                                            <Trash2 size={12} /> إفراغ
                                         </button>
                                     </div>
 
-                                    {/* Coupon - inside cart (pro) */}
-                                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                                        <div className="flex items-center gap-2 text-[11px] font-black text-slate-700 mb-2">
-                                            <Ticket size={14} className="text-orange-600" /> كود الخصم
-                                            {hasCoupon && <span className="mr-auto text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px]">تم التطبيق</span>}
+                                    {/* Coupon — compact minimal */}
+                                    <div className="bg-white border border-slate-200 rounded-xl p-2.5">
+                                        <div className="flex items-center gap-2 text-[11px] font-bold text-slate-600 mb-2">
+                                            <Ticket size={13} className="text-orange-600" /> كود الخصم
+                                            {hasCoupon && <span className="mr-auto text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-bold">تم التطبيق</span>}
                                         </div>
                                         {!hasCoupon ? (
                                             <>
@@ -328,191 +319,152 @@ const CartDrawer = () => {
                                                         onChange={(e) => setLocalCouponInput(e.target.value.toUpperCase())}
                                                         onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
                                                         placeholder="WELCOME20"
-                                                        className="flex-1 h-11 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm font-mono tracking-widest text-center uppercase placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-orange-500/15 focus:border-orange-300 transition"
+                                                        className="flex-1 h-10 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm font-mono tracking-widest text-center uppercase placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-orange-500/15 focus:border-orange-300 transition"
                                                         disabled={couponLoading}
                                                     />
                                                     <button
                                                         onClick={handleApplyCoupon}
                                                         disabled={couponLoading || !localCouponInput.trim()}
-                                                        className="h-11 px-5 bg-slate-900 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-black flex items-center gap-2 transition-colors shrink-0"
+                                                        className="h-10 px-4 bg-slate-900 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold flex items-center gap-1.5 transition-colors shrink-0"
                                                     >
-                                                        {couponLoading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} تطبيق
+                                                        {couponLoading ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} تطبيق
                                                     </button>
                                                 </div>
                                                 {couponError && <p className="text-[11px] font-bold text-red-600 mt-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{couponError}</p>}
                                             </>
                                         ) : (
-                                            <div className="flex items-center justify-between gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3">
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0"><Ticket size={14} /></div>
+                                            <div className="flex items-center justify-between gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0"><Ticket size={12} /></div>
                                                     <div className="min-w-0">
-                                                        <p className="font-mono font-black text-emerald-800 text-sm leading-none">{coupon.code}</p>
-                                                        <p className="text-[11px] font-bold text-emerald-700 mt-1">
+                                                        <p className="font-mono font-bold text-emerald-800 text-sm leading-none">{coupon.code}</p>
+                                                        <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">
                                                             خصم {coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : formatPrice(coupon.discount_value)} • وفّرت {formatPrice(discountAmount)}
                                                         </p>
                                                     </div>
                                                 </div>
                                                 <button
                                                     onClick={removeCoupon}
-                                                    className="w-8 h-8 rounded-full bg-white border border-emerald-200 text-emerald-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 flex items-center justify-center shrink-0 transition-colors"
+                                                    className="w-7 h-7 rounded-full bg-white border border-emerald-200 text-emerald-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 flex items-center justify-center shrink-0 transition-colors"
                                                     aria-label="إزالة الكوبون"
                                                 >
-                                                    <X size={14} />
+                                                    <X size={12} />
                                                 </button>
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* Items */}
-                                    <AnimatePresence mode="popLayout" initial={false}>
-                                        {cartItems.map((item) => {
-                                            const key = `${item.id}-${canonicalKey(item.options)}`;
-                                            const isLowStock = item.stock_quantity != null && item.quantity >= item.stock_quantity;
-                                            const maxStock = item.stock_quantity ?? 9999;
-                                            const unitPrice = Number(item.price) || 0;
-                                            const lineTotal = unitPrice * (Number(item.quantity) || 0);
-                                            const inputVal = qtyInputs[key] ?? String(item.quantity);
-                                            return (
-                                                <motion.div
-                                                    key={key}
-                                                    layout
-                                                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                    exit={{ opacity: 0, y: -8, scale: 0.96, transition: { duration: 0.18 } }}
-                                                    transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-                                                    className="group bg-white border border-slate-200 rounded-2xl p-3 flex gap-3 hover:border-slate-300 hover:shadow-sm transition-all"
-                                                >
-                                                    {/* Image */}
-                                                    <div className="relative shrink-0">
-                                                        <img
-                                                            src={item.image_url || item.image || 'https://placehold.co/120x120/f8fafc/94a3b8?text=IMG'}
-                                                            alt={item.name}
-                                                            className="w-[84px] h-[84px] rounded-xl object-cover bg-slate-50 border border-slate-100"
-                                                            loading="lazy"
-                                                            onError={(e) => {
-                                                                e.currentTarget.src = 'https://placehold.co/120x120/f8fafc/94a3b8?text=IMG';
-                                                            }}
-                                                        />
-                                                        <span className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1 bg-slate-900 text-white rounded-full flex items-center justify-center text-[11px] font-black shadow">×{item.quantity}</span>
-                                                    </div>
-
-                                                    {/* Content */}
-                                                    <div className="flex-1 min-w-0 flex flex-col gap-2">
-                                                        <div className="flex items-start justify-between gap-2">
-                                                            <h3 className="font-black text-slate-900 text-[13px] leading-snug line-clamp-2 tracking-tight">{item.name}</h3>
-                                                            <button
-                                                                onClick={() => removeFromCart(item.id, item.options)}
-                                                                aria-label={`حذف ${item.name}`}
-                                                                className="w-7 h-7 rounded-full bg-slate-50 border border-slate-200 text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 flex items-center justify-center shrink-0 transition-colors"
-                                                            >
-                                                                <Trash2 size={13} />
-                                                            </button>
+                                    {/* Items — List style (B): unified container with divide-y */}
+                                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100">
+                                        <AnimatePresence mode="popLayout" initial={false}>
+                                            {cartItems.map((item) => {
+                                                const key = `${item.id}-${canonicalKey(item.options)}`;
+                                                const isLowStock = item.stock_quantity != null && item.quantity >= item.stock_quantity;
+                                                const unitPrice = Number(item.price) || 0;
+                                                const lineTotal = unitPrice * (Number(item.quantity) || 0);
+                                                return (
+                                                    <motion.div
+                                                        key={key}
+                                                        layout
+                                                        initial={{ opacity: 0, y: 6 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -6, transition: { duration: 0.16 } }}
+                                                        transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+                                                        className="group flex gap-3 p-3 hover:bg-slate-50/70 transition-colors"
+                                                    >
+                                                        {/* Image — 64px compact, no badge */}
+                                                        <div className="relative shrink-0">
+                                                            <img
+                                                                src={item.image_url || item.image || 'https://placehold.co/120x120/f8fafc/94a3b8?text=IMG'}
+                                                                alt={item.name}
+                                                                className="w-16 h-16 rounded-xl object-cover bg-slate-50 border border-slate-100"
+                                                                loading="lazy"
+                                                                onError={(e) => {
+                                                                    e.currentTarget.src = 'https://placehold.co/120x120/f8fafc/94a3b8?text=IMG';
+                                                                }}
+                                                            />
                                                         </div>
 
-                                                        {/* Options */}
-                                                        {item.options && Object.keys(item.options).length > 0 && (
-                                                            <div className="flex flex-wrap gap-1.5">
-                                                                {Object.entries(item.options).map(([k, v]) => (
-                                                                    <span
-                                                                        key={k}
-                                                                        className="inline-flex items-center text-[10.5px] font-bold text-slate-600 bg-slate-50 border border-slate-200 px-2 py-1 rounded-full"
-                                                                    >
-                                                                        {String(v)}
-                                                                    </span>
-                                                                ))}
+                                                        {/* Content */}
+                                                        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <h3 className="font-bold text-slate-900 text-[13px] leading-snug line-clamp-2">{item.name}</h3>
+                                                                <button
+                                                                    onClick={() => removeFromCart(item.id, item.options)}
+                                                                    aria-label={`حذف ${item.name}`}
+                                                                    className="w-6 h-6 rounded-full bg-white border border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200 flex items-center justify-center shrink-0 transition-colors"
+                                                                >
+                                                                    <Trash2 size={11} />
+                                                                </button>
                                                             </div>
-                                                        )}
 
-                                                        {/* Low stock */}
-                                                        {isLowStock && (
-                                                            <div className="inline-flex items-center gap-1 text-[10.5px] font-black text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1 w-fit">
-                                                                <AlertTriangle size={11} /> متبقي {item.stock_quantity} فقط
-                                                            </div>
-                                                        )}
+                                                            {/* Options — smaller pills */}
+                                                            {item.options && Object.keys(item.options).length > 0 && (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {Object.entries(item.options).map(([k, v]) => (
+                                                                        <span
+                                                                            key={k}
+                                                                            className="inline-flex items-center text-[10px] font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-full"
+                                                                        >
+                                                                            {String(v)}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
 
-                                                        {/* Price + Qty */}
-                                                        <div className="mt-1 flex items-end justify-between gap-3">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-[15px] font-black text-slate-900 leading-none tracking-tight">{formatPrice(lineTotal)}</span>
-                                                                <span className="text-[11px] font-bold text-slate-400 mt-1">
-                                                                    {formatPrice(unitPrice)} × {item.quantity}
+                                                            {/* Low stock — minimal */}
+                                                            {isLowStock && (
+                                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 w-fit">
+                                                                    <AlertTriangle size={10} /> متبقي {item.stock_quantity} فقط
                                                                 </span>
-                                                            </div>
+                                                            )}
 
-                                                            {/* Stepper */}
-                                                            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-full p-1 shadow-inner shrink-0">
-                                                                <button
-                                                                    onClick={() => {
-                                                                        if (item.quantity <= 1) {
-                                                                            removeFromCart(item.id, item.options);
-                                                                        } else {
-                                                                            updateQuantity(item.id, -1, item.options);
-                                                                        }
-                                                                    }}
-                                                                    aria-label="إنقاص الكمية"
-                                                                    className="w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white hover:border-slate-900 flex items-center justify-center shadow-sm active:scale-95 transition-all"
-                                                                >
-                                                                    <Minus size={12} strokeWidth={2.6} />
-                                                                </button>
+                                                            {/* Price + Stepper — simplified */}
+                                                            <div className="mt-0.5 flex items-center justify-between gap-2">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[14px] font-bold text-slate-900 leading-none tracking-tight">{formatPrice(lineTotal)}</span>
+                                                                    <span className="text-[11px] font-medium text-slate-400 mt-0.5">
+                                                                        {formatPrice(unitPrice)} × {item.quantity}
+                                                                    </span>
+                                                                </div>
 
-                                                                <input
-                                                                    value={inputVal}
-                                                                    onChange={(e) => {
-                                                                        const v = e.target.value.replace(/[^\d]/g, '');
-                                                                        setQtyInputs((prev) => ({ ...prev, [key]: v }));
-                                                                    }}
-                                                                    onBlur={() => {
-                                                                        const v = qtyInputs[key];
-                                                                        if (v == null || v === '') {
-                                                                            setQtyInputs((prev) => {
-                                                                                const n = { ...prev };
-                                                                                delete n[key];
-                                                                                return n;
-                                                                            });
-                                                                            return;
-                                                                        }
-                                                                        const num = Math.max(1, Math.min(maxStock, Number(v) || 1));
-                                                                        setQuantity(item.id, num, item.options);
-                                                                        setQtyInputs((prev) => {
-                                                                            const n = { ...prev };
-                                                                            delete n[key];
-                                                                            return n;
-                                                                        });
-                                                                    }}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') e.currentTarget.blur();
-                                                                        if (e.key === 'ArrowUp') {
-                                                                            e.preventDefault();
-                                                                            if (item.quantity < maxStock) updateQuantity(item.id, 1, item.options);
-                                                                        }
-                                                                        if (e.key === 'ArrowDown') {
-                                                                            e.preventDefault();
-                                                                            if (item.quantity > 1) updateQuantity(item.id, -1, item.options);
-                                                                            else removeFromCart(item.id, item.options);
-                                                                        }
-                                                                    }}
-                                                                    className="w-10 h-8 text-center bg-transparent text-[13px] font-black text-slate-900 tabular-nums focus:outline-none"
-                                                                    inputMode="numeric"
-                                                                />
+                                                                {/* Stepper — display only, no input */}
+                                                                <div className="flex items-center gap-0.5 bg-white border border-slate-200 rounded-full p-0.5 shrink-0">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            if (item.quantity <= 1) {
+                                                                                removeFromCart(item.id, item.options);
+                                                                            } else {
+                                                                                updateQuantity(item.id, -1, item.options);
+                                                                            }
+                                                                        }}
+                                                                        aria-label="إنقاص الكمية"
+                                                                        className="w-7 h-7 rounded-full bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 flex items-center justify-center active:scale-95 transition-colors"
+                                                                    >
+                                                                        <Minus size={11} strokeWidth={2.4} />
+                                                                    </button>
 
-                                                                <button
-                                                                    onClick={() => updateQuantity(item.id, 1, item.options)}
-                                                                    disabled={isLowStock}
-                                                                    aria-label="زيادة الكمية"
-                                                                    className="w-8 h-8 rounded-full bg-slate-900 text-white hover:bg-orange-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center shadow-sm active:scale-95 transition-colors"
-                                                                >
-                                                                    <Plus size={12} strokeWidth={2.6} />
-                                                                </button>
+                                                                    <span className="w-7 text-center text-[13px] font-bold text-slate-900 tabular-nums select-none">{item.quantity}</span>
+
+                                                                    <button
+                                                                        onClick={() => updateQuantity(item.id, 1, item.options)}
+                                                                        disabled={isLowStock}
+                                                                        aria-label="زيادة الكمية"
+                                                                        className="w-7 h-7 rounded-full bg-slate-900 text-white hover:bg-orange-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center active:scale-95 transition-colors"
+                                                                    >
+                                                                        <Plus size={11} strokeWidth={2.4} />
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </motion.div>
-                                            );
-                                        })}
-                                    </AnimatePresence>
+                                                    </motion.div>
+                                                );
+                                            })}
+                                        </AnimatePresence>
+                                    </div>
 
-                                    {/* Security / reassurance */}
-                                    <div className="flex items-center justify-center gap-2 text-[10px] font-black tracking-widest text-slate-400 uppercase pt-1">
+                                    {/* Security / reassurance — lighter */}
+                                    <div className="flex items-center justify-center gap-2 text-[10px] font-semibold tracking-wide text-slate-400 pt-1">
                                         <span className="flex items-center gap-1"><ShieldCheck size={12} className="text-emerald-500" /> دفع آمن</span>
                                         <span className="w-1 h-1 bg-slate-300 rounded-full" />
                                         <span>استرجاع 14 يوم</span>
