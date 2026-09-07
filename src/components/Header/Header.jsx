@@ -2,9 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { User, ShoppingCart, Search, Globe, LogOut, ChevronDown, ShieldCheck, Package } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
-import { checkIsAdmin } from '../../services/supabase/adminClient';
+import { checkIsAdmin } from '@/services/supabase/adminClient';
 import { useCart } from '../../context/CartContext';
-import { getProducts } from '@/services/supabase/inventoryService';
 import './Header.css';
 import './AccountDropdown.css';
 
@@ -18,7 +17,7 @@ const Header = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const [products, setProducts] = useState([]);
+  const [dbResults, setDbResults] = useState([]);
 
   // Debounce search input 300ms
   useEffect(() => {
@@ -26,19 +25,31 @@ const Header = () => {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  // Load product names for real search
+  // H-01: استخدم ilike مع limit بدل تحميل كل المنتجات
   useEffect(() => {
+    if (!debouncedTerm || debouncedTerm.length < 1) { setDbResults([]); return; }
     let cancelled = false;
     (async () => {
       try {
-        const { data } = await getProducts();
-        if (!cancelled && Array.isArray(data)) setProducts(data);
-      } catch (e) {
-        void e;
+        const term = debouncedTerm.replace(/%/g, '').replace(/,/g, '');
+        // محاولة البحث عبر Supabase بـ ilike مع limit 6
+        const { data, error } = await supabase
+          .from('products')
+          .select('name, name_ar')
+          .or(`name.ilike.%${term}%,name_ar.ilike.%${term}%`)
+          .limit(6);
+        if (!cancelled && !error && Array.isArray(data)) {
+          setDbResults(data.map(p => p.name || p.name_ar).filter(Boolean));
+        } else if (!cancelled && error) {
+          // fallback: لا شيء
+          setDbResults([]);
+        }
+      } catch {
+        if (!cancelled) setDbResults([]);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [debouncedTerm]);
 
   useEffect(() => {
     // Get initial session
@@ -70,20 +81,26 @@ const Header = () => {
 
   const suggestions = useMemo(() => ['عدد يدوية', 'بويات جوتن', 'سباكة خلاطات', 'كهرباء كابلات', 'باب حديد'], []);
 
-  // Compute filtered suggestions: prefer real product names, fallback to static
+  const handleSelectSuggestion = (term) => {
+    setSearchTerm(term);
+    setShowSuggestions(false);
+    setIsMobileSearchOpen(false);
+    // H-03: انتقل للكتالوج مع query
+    navigate(`/catalog?search=${encodeURIComponent(term)}`);
+  };
+
+  // Compute filtered suggestions: prefer DB results, fallback to static
   const { filteredCombined, hasResults } = useMemo(() => {
     if (!debouncedTerm) return { filteredCombined: [], hasResults: false };
     const term = debouncedTerm;
-    const filteredProducts = products
-      .filter(p => (p.name && p.name.includes(term)) || (p.name_ar && p.name_ar.includes(term)))
-      .slice(0, 6)
-      .map(p => p.name || p.name_ar);
+    if (dbResults.length > 0) {
+      const deduped = [...new Set(dbResults)].slice(0, 6);
+      return { filteredCombined: deduped, hasResults: true };
+    }
     const filteredStatic = suggestions.filter(s => s.includes(term));
-    // Prefer product results if any, otherwise static; deduplicate
-    const combined = filteredProducts.length > 0 ? filteredProducts : filteredStatic;
-    const deduped = [...new Set(combined)].slice(0, 6);
+    const deduped = [...new Set(filteredStatic)].slice(0, 6);
     return { filteredCombined: deduped, hasResults: deduped.length > 0 };
-  }, [debouncedTerm, products, suggestions]);
+  }, [debouncedTerm, dbResults, suggestions]);
 
   return (
     <header className="site-header">
@@ -110,7 +127,7 @@ const Header = () => {
         </div>
 
         {/* CENTER: Search bar (Desktop Only) */}
-        <div className="header-search desktop-only">
+        <div className="header-search desktop-only" role="search" aria-label="بحث المنتجات">
           <div className="search-wrapper">
             <input
               type="text"
@@ -120,23 +137,24 @@ const Header = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              aria-label="بحث"
+              aria-autocomplete="list"
+              aria-expanded={showSuggestions && debouncedTerm.length>0}
             />
-            <button className="search-btn">
+            <button className="search-btn" aria-label="بحث" onClick={() => handleSelectSuggestion(searchTerm.trim())}>
               <Search size={16} strokeWidth={2.5} />
               <span>بحث</span>
             </button>
 
             {showSuggestions && debouncedTerm.length > 0 && (
-              <div className="search-suggestions animate-fade-in">
+              <div className="search-suggestions animate-fade-in" role="listbox">
                 {hasResults ? (
                   filteredCombined.map((s, i) => (
                     <div
                       key={i}
                       className="suggestion-item"
-                      onMouseDown={() => {
-                        setSearchTerm(s);
-                        setShowSuggestions(false);
-                      }}
+                      role="option"
+                      onMouseDown={() => handleSelectSuggestion(s)}
                     >
                       <Search size={14} />
                       <span>{s}</span>
@@ -161,6 +179,11 @@ const Header = () => {
                 className={`account-menu-trigger action-item ${isDropdownOpen ? 'active' : ''}`}
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 style={{ cursor: 'pointer' }}
+                role="button"
+                tabIndex={0}
+                aria-haspopup="menu"
+                aria-expanded={isDropdownOpen}
+                onKeyDown={(e)=>{ if(e.key==='Enter'||e.key===' ') setIsDropdownOpen(!isDropdownOpen); }}
               >
                 <User size={20} strokeWidth={1.8} />
                 <span className="action-label" style={{ textAlign: 'right' }}>
@@ -247,16 +270,14 @@ const Header = () => {
             </div>
             
             {debouncedTerm.length > 0 && (
-              <div className="overlay-suggestions animate-slide-up">
+              <div className="overlay-suggestions animate-slide-up" role="listbox">
                 {hasResults ? (
                   filteredCombined.map((s, i) => (
                     <div
                       key={i}
                       className="overlay-suggestion-item"
-                      onClick={() => {
-                        setSearchTerm(s);
-                        setIsMobileSearchOpen(false);
-                      }}
+                      role="option"
+                      onClick={() => handleSelectSuggestion(s)}
                     >
                       <Search size={18} />
                       <span>{s}</span>

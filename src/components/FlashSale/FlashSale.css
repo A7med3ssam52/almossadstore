@@ -74,6 +74,10 @@
 .pc-img-zoom {
     transform: scale(1.08);
 }
+/* Pure CSS hover support (replaces JS state) */
+.pc-card:hover .pc-img {
+    transform: scale(1.08);
+}
 
 /* Gradient Overlay */
 .pc-overlay {
@@ -86,6 +90,9 @@
 }
 
 .pc-overlay-visible {
+    opacity: 1;
+}
+.pc-card:hover .pc-overlay {
     opacity: 1;
 }
 
@@ -180,6 +187,19 @@
 
 .pc-cta-visible {
     transform: translateY(0);
+}
+.pc-card:hover .pc-cta-bar {
+    transform: translateY(0);
+}
+.pc-cta-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+.pc-cta-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .pc-cta-inner {

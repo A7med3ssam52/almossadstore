@@ -4,6 +4,8 @@ import { getProducts, getCategories } from '../services/supabase/inventoryServic
 import { ProductCard } from '../components/FlashSale/FlashSale';
 import Pagination from '../components/ui/Pagination';
 import { useResponsivePagination } from '../hooks/useResponsivePagination';
+import { getDiscountedPrice } from '@/utils/formatters';
+import { useSearchParams } from 'react-router-dom';
 import './Catalog.css';
 import '../components/FlashSale/FlashSale.css';
 
@@ -12,14 +14,21 @@ const Catalog = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showMobileFilters, setShowMobileFilters] = useState(false);
+    const [searchParams] = useSearchParams();
     
     const { currentPage, setCurrentPage, itemsPerPage } = useResponsivePagination(12, 10);
 
     // Filters State
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search') || '');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [priceRange, setPriceRange] = useState([0, 50000]);
     const [sortBy, setSortBy] = useState('newest');
+
+    // H-03: sync search param from Header navigation
+    useEffect(() => {
+        const s = searchParams.get('search');
+        if (s !== null) setSearchQuery(s);
+    }, [searchParams]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -35,19 +44,23 @@ const Catalog = () => {
         fetchData();
     }, []);
 
-    // Extended filtering logic
+    // P-02: فلترة سعر بـ getDiscountedPrice + دعم category_ids array
     const filteredProducts = useMemo(() => {
         return products
             .filter(p => {
-                const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-                const matchesCategory = selectedCategory === 'all' || p.category_id === selectedCategory || p.categories?.name === selectedCategory;
-                const matchesPrice = p.base_price >= priceRange[0] && p.base_price <= priceRange[1];
+                const matchesSearch = !searchQuery || p.name?.toLowerCase().includes(searchQuery.toLowerCase()) || p.name_ar?.toLowerCase().includes(searchQuery.toLowerCase());
+                const matchesCategory = selectedCategory === 'all'
+                    || p.category_id === selectedCategory
+                    || p.categories?.name === selectedCategory
+                    || (Array.isArray(p.category_ids) && p.category_ids.includes(selectedCategory));
+                const price = getDiscountedPrice(p);
+                const matchesPrice = price >= priceRange[0] && price <= priceRange[1];
                 return matchesSearch && matchesCategory && matchesPrice;
             })
             .sort((a, b) => {
                 if (sortBy === 'newest') return new Date(b.created_at) - new Date(a.created_at);
-                if (sortBy === 'price-low') return a.base_price - b.base_price;
-                if (sortBy === 'price-high') return b.base_price - a.base_price;
+                if (sortBy === 'price-low') return getDiscountedPrice(a) - getDiscountedPrice(b);
+                if (sortBy === 'price-high') return getDiscountedPrice(b) - getDiscountedPrice(a);
                 return 0;
             });
     }, [products, searchQuery, selectedCategory, priceRange, sortBy]);

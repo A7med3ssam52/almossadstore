@@ -168,6 +168,86 @@ BEGIN
     END IF;
 END $$;
 
+-- ─── 5b. Cart Items Table (Persistent Shopping Cart) ──────
+-- حل نهائي لمشكلة السلة: جدول محفوظ في السحابة لكل مستخدم مسجل
+-- يعمل مع LocalStorage للزوار (Guest Cart) ويندمج عند التسجيل
+CREATE TABLE IF NOT EXISTS public.cart_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    product_id UUID REFERENCES public.products(id) ON DELETE CASCADE NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
+    options JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS cart_items_user_id_idx ON public.cart_items(user_id);
+DO $$ BEGIN
+    -- تنظيف أي قيد قديم ثم إنشاء قيد فريد يمنع تكرار نفس المنتج بنفس الخيارات لنفس المستخدم
+    -- نعتمد على (options::text) لتجنب مشاكل مقارنة JSONB في PostgreSQL
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname='cart_items_user_product_options_idx') THEN
+        CREATE UNIQUE INDEX cart_items_user_product_options_idx
+        ON public.cart_items (user_id, product_id, (options::text));
+    END IF;
+END $$;
+ALTER TABLE public.cart_items ENABLE ROW LEVEL SECURITY;
+
+-- ─── 5c. Coupons Table (Marketing) ──────────────────────────
+CREATE TABLE IF NOT EXISTS public.coupons (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT UNIQUE NOT NULL,
+    discount_type TEXT NOT NULL CHECK (discount_type IN ('percentage','fixed')),
+    discount_value DECIMAL(10,2) NOT NULL CHECK (discount_value > 0),
+    expiry_date DATE,
+    usage_limit INTEGER DEFAULT 100 CHECK (usage_limit > 0),
+    used_count INTEGER DEFAULT 0 CHECK (used_count >= 0),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_coupons_code ON public.coupons(code);
+CREATE INDEX IF NOT EXISTS idx_coupons_active_expiry ON public.coupons(is_active, expiry_date);
+ALTER TABLE public.coupons ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.coupons TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.coupons TO authenticated, service_role;
+
+-- Seed coupons if not exists (idempotent)
+INSERT INTO public.coupons (code, discount_type, discount_value, expiry_date, usage_limit, is_active)
+VALUES 
+    ('WELCOME20', 'percentage', 20, '2026-12-31', 100, true),
+    ('SAVE50', 'fixed', 50, '2026-06-30', 50, true),
+    ('RAMADAN25', 'percentage', 25, '2026-09-01', 200, true)
+ON CONFLICT (code) DO NOTHING;
+
+-- coupons RLS + functions (also in 20260405_coupons.sql for migrations)
+DO $$
+BEGIN
+    DROP POLICY IF EXISTS "Admin full access to coupons" ON public.coupons;
+    CREATE POLICY "Admin full access to coupons" ON public.coupons
+        FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+    DROP POLICY IF EXISTS "Public can validate active coupons" ON public.coupons;
+    CREATE POLICY "Public can validate active coupons" ON public.coupons
+        FOR SELECT USING (is_active = true AND (expiry_date IS NULL OR expiry_date >= CURRENT_DATE) AND used_count < usage_limit);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.increment_coupon_usage(p_coupon_id UUID)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE public.coupons SET used_count = used_count + 1, updated_at = NOW() WHERE id = p_coupon_id AND used_count < usage_limit;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+GRANT EXECUTE ON FUNCTION public.increment_coupon_usage(UUID) TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.decrement_stock(p_product_id UUID, p_qty INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE public.products SET stock_quantity = GREATEST(0, stock_quantity - p_qty), updated_at = NOW() WHERE id = p_product_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+GRANT EXECUTE ON FUNCTION public.decrement_stock(UUID, INTEGER) TO anon, authenticated, service_role;
+
+DROP TRIGGER IF EXISTS coupons_updated_at ON public.coupons;
+CREATE TRIGGER coupons_updated_at BEFORE UPDATE ON public.coupons FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
 -- ─── 6. Storage Bucket for Product Images ─────────────────
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('product-images', 'product-images', true)
@@ -178,6 +258,7 @@ ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_variants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cart_items ENABLE ROW LEVEL SECURITY;
 
 -- ─── 8. is_admin() Helper Function ────────────────────────
 -- SECURITY DEFINER bypasses RLS so the function can read profiles
@@ -252,7 +333,24 @@ BEGIN
 
     -- إزالة السياسات القديمة والمكررة
     DROP POLICY IF EXISTS "Admin full access to profiles" ON public.profiles;
-    DROP POLICY IF EXISTS "Enable insert for service role" ON public.profiles;
+     DROP POLICY IF EXISTS "Enable insert for service role" ON public.profiles;
+
+     -- ── Cart Items: كل مستخدم يرى ويعدل سلته فقط (Guest handled via LocalStorage) ──
+     DROP POLICY IF EXISTS "Users can view their own cart items" ON public.cart_items;
+     CREATE POLICY "Users can view their own cart items" ON public.cart_items
+         FOR SELECT USING (auth.uid() = user_id);
+     DROP POLICY IF EXISTS "Users can insert their own cart items" ON public.cart_items;
+     CREATE POLICY "Users can insert their own cart items" ON public.cart_items
+         FOR INSERT WITH CHECK (auth.uid() = user_id);
+     DROP POLICY IF EXISTS "Users can update their own cart items" ON public.cart_items;
+     CREATE POLICY "Users can update their own cart items" ON public.cart_items
+         FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+     DROP POLICY IF EXISTS "Users can delete their own cart items" ON public.cart_items;
+     CREATE POLICY "Users can delete their own cart items" ON public.cart_items
+         FOR DELETE USING (auth.uid() = user_id);
+     DROP POLICY IF EXISTS "Admin full access to cart_items" ON public.cart_items;
+     CREATE POLICY "Admin full access to cart_items" ON public.cart_items
+         FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 END $$;
 
 -- ─── 10. Storage Policies ─────────────────────────────────
@@ -413,6 +511,11 @@ BEGIN
     CREATE POLICY "Users can view own orders" ON public.orders
         FOR SELECT USING (auth.uid() = user_id);
 
+    -- Guests can view guest orders (needed for OrderSuccess & order_items EXISTS check)
+    DROP POLICY IF EXISTS "Guests can view guest orders" ON public.orders;
+    CREATE POLICY "Guests can view guest orders" ON public.orders
+        FOR SELECT USING (user_id IS NULL);
+
     -- Users can insert their own orders (and guests can insert their own anonymous orders)
     DROP POLICY IF EXISTS "Users can create own orders" ON public.orders;
     CREATE POLICY "Users can create own orders" ON public.orders
@@ -450,10 +553,28 @@ BEGIN
         FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 END $$;
 
--- Enable updated_at trigger for orders
+-- ── 13b. Coupons linkage for orders (also in 20260405_coupons.sql – kept here for fresh installs) ──
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='coupon_id') THEN
+        ALTER TABLE public.orders ADD COLUMN coupon_id UUID REFERENCES public.coupons(id) ON DELETE SET NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='discount_amount') THEN
+        ALTER TABLE public.orders ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='coupon_code') THEN
+        ALTER TABLE public.orders ADD COLUMN coupon_code TEXT;
+    END IF;
+END $$;
+
+-- Enable updated_at trigger for orders & cart_items (reuse set_updated_at)
 DROP TRIGGER IF EXISTS orders_updated_at ON public.orders;
 CREATE TRIGGER orders_updated_at
     BEFORE UPDATE ON public.orders
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS update_cart_items_updated_at ON public.cart_items;
+CREATE TRIGGER update_cart_items_updated_at
+    BEFORE UPDATE ON public.cart_items
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 -- ─── 14. Initial Seed Data ────────────────────────────────

@@ -1,14 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, Package, ArrowRight, ShoppingBag } from 'lucide-react';
+import { CheckCircle2, Package, ArrowRight, ShoppingBag, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { supabase } from '@/supabaseClient';
 
 const OrderSuccess = () => {
     const [searchParams] = useSearchParams();
     const orderId = searchParams.get('id');
+    const [order, setOrder] = useState(null);
+    const [loadingOrder, setLoadingOrder] = useState(!!orderId);
+    const [orderError, setOrderError] = useState('');
 
     useEffect(() => {
+        // C-CHK-07: respect prefers-reduced-motion
+        const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReduced) return;
         // Trigger confetti on mount
         const duration = 3 * 1000;
         const animationEnd = Date.now() + duration;
@@ -30,6 +37,34 @@ const OrderSuccess = () => {
 
         return () => clearInterval(interval);
     }, []);
+
+    // C-CHK-03: جلب بيانات الطلب وتحقق الملكية
+    useEffect(() => {
+        if (!orderId) { setLoadingOrder(false); return; }
+        let cancelled = false;
+        (async () => {
+            setLoadingOrder(true);
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                const { data, error } = await supabase.from('orders').select('id, total_amount, status, customer_name, user_id').eq('id', orderId).single();
+                if (cancelled) return;
+                if (error) throw error;
+                if (!data) { setOrderError('الطلب غير موجود'); return; }
+                // تحقق ملكية: إذا الطلب مرتبط بمستخدم والمسجل ليس نفس المستخدم => إخفاء التفاصيل الحساسة
+                if (data.user_id && user && data.user_id !== user.id) {
+                    setOrderError('ليس لديك صلاحية عرض هذا الطلب');
+                    setOrder(null);
+                    return;
+                }
+                setOrder(data);
+            } catch (e) {
+                if (!cancelled) setOrderError(e.message || 'تعذر جلب بيانات الطلب');
+            } finally {
+                if (!cancelled) setLoadingOrder(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [orderId]);
 
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4" dir="rtl">
@@ -57,7 +92,19 @@ const OrderSuccess = () => {
                 <div className="bg-slate-50 rounded-3xl p-6 mb-8 border border-slate-100 flex items-center justify-between">
                     <div className="text-right">
                         <p className="text-xs font-black tracking-widest text-slate-400 uppercase mb-1">رقم الطلب</p>
-                        <p className="font-mono text-lg font-bold text-slate-900">#{orderId ? orderId.split('-')[0].toUpperCase() : '0000'}</p>
+                        {loadingOrder ? (
+                            <span className="flex items-center gap-2 text-slate-500 text-sm font-bold"><Loader2 size={16} className="animate-spin"/> جارٍ التحميل...</span>
+                        ) : orderError ? (
+                            <p className="text-xs font-bold text-red-600">{orderError}</p>
+                        ) : (
+                            <p className="font-mono text-lg font-bold text-slate-900">#{orderId ? orderId.split('-')[0].toUpperCase() : '0000'}</p>
+                        )}
+                        {order && (
+                            <div className="mt-2 text-xs font-bold text-slate-500 space-y-1">
+                                <p>الإجمالي: {Number(order.total_amount).toLocaleString()} ج.م</p>
+                                <p>الحالة: {order.status === 'pending' ? 'قيد المراجعة' : order.status}</p>
+                            </div>
+                        )}
                     </div>
                     <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
                         <Package size={24} className="text-orange-500" />

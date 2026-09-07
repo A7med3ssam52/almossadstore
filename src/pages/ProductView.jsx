@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Package, ChevronRight, ShoppingCart, MessageCircle,
     ShieldCheck, Truck, RefreshCw, Loader2, ArrowRight,
-    Star, Tag, Minus, Plus, Heart, Share2, CheckCircle
+    Star, Tag, Minus, Plus, Heart, Share2, CheckCircle,
+    AlertTriangle
 } from 'lucide-react';
 import { getProductById } from '@/services/supabase/inventoryService';
 import ProductGallery from '@/components/ProductDetails/ProductGallery';
@@ -41,11 +42,15 @@ const ProductView = () => {
     const [loading, setLoading] = useState(true);
     const [qty, setQty] = useState(1);
     const [addedToCart, setAddedToCart] = useState(false);
+    const [selectedVariant, setSelectedVariant] = useState(null);
+    const [variantError, setVariantError] = useState('');
 
     useEffect(() => {
         const load = async () => {
             const { data } = await getProductById(id);
             setProduct(data);
+            // auto-select first variant if exists
+            if (data?.product_variants?.length > 0) setSelectedVariant(data.product_variants[0]);
             setLoading(false);
         };
         load();
@@ -53,7 +58,21 @@ const ProductView = () => {
     }, [id]);
 
     const handleAddToCart = () => {
-        addToCart(product, qty);
+        // منع إضافة سعر 0 (P? + C-CART-01)
+        const effectivePrice = selectedVariant?.price != null ? Number(selectedVariant.price) : getDiscountedPrice(product);
+        if (!effectivePrice || effectivePrice <= 0) {
+            setVariantError('هذا المنتج غير مسعر، تواصل معنا');
+            return;
+        }
+        if (product.product_variants?.length > 0 && !selectedVariant) {
+            setVariantError('اختر النوع أولاً');
+            return;
+        }
+        setVariantError('');
+        const options = selectedVariant ? { variant_id: selectedVariant.id, variant_name: selectedVariant.name || selectedVariant.title || selectedVariant.sku || '' } : null;
+        // إذا كان variant له سعر خاص، مرر product معدل السعر
+        const productForCart = selectedVariant?.price != null ? { ...product, base_price: selectedVariant.price, sale_price: null, discount: 0, stock_quantity: selectedVariant.stock_quantity ?? product.stock_quantity } : product;
+        addToCart(productForCart, qty, options);
         setAddedToCart(true);
         setTimeout(() => setAddedToCart(false), 2500);
     };
@@ -88,11 +107,13 @@ const ProductView = () => {
         </div>
     );
 
-    const isOutOfStock = product.stock_quantity === 0;
+    const isOutOfStock = (selectedVariant?.stock_quantity ?? product.stock_quantity) === 0;
     const hasDiscount = hasProductDiscount(product);
-    const basePrice = getOriginalPrice(product);
-    const discountedPrice = getDiscountedPrice(product);
+    const basePrice = selectedVariant?.price != null ? Number(selectedVariant.price) : getOriginalPrice(product);
+    const discountedPrice = selectedVariant?.price != null ? Number(selectedVariant.price) : getDiscountedPrice(product);
     const mainImage = getProductImage(product) || PLACEHOLDER_IMAGE;
+    const isContactPrice = discountedPrice === 0 && basePrice === 0;
+    const variants = product.product_variants || [];
 
     return (
         <div style={{ minHeight: '100vh', background: '#f8fafc', paddingBottom: '80px' }} dir="rtl">
@@ -112,11 +133,11 @@ const ProductView = () => {
             </div>
 
             <div className="container" style={{ paddingTop: '32px' }}>
-                <div className="pv-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px', alignItems: 'start' }}>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-start">
 
                     {/* LEFT: Gallery */}
-                    <div className="pv-sticky" style={{ position: 'sticky', top: '20px' }}>
-                        <ProductGallery images={product.images?.length > 0 ? product.images : [mainImage]} />
+                    <div className="lg:sticky lg:top-6 min-w-0">
+                        <ProductGallery images={product.images && product.images.length > 0 ? product.images : (mainImage ? [mainImage] : [])} />
                         {product.is_featured && (
                             <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -164,7 +185,35 @@ const ProductView = () => {
                             background: '#fff', border: '1.5px solid #f1f5f9', borderRadius: '24px',
                             padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
                         }}>
-                            {(discountedPrice > 0 || basePrice > 0) ? (
+                            {/* Variant selector */}
+                            {variants.length > 0 && (
+                                <div style={{ marginBottom: '16px' }}>
+                                    <p style={{ fontSize: '12px', fontWeight: 800, color: '#334155', marginBottom: '8px' }}>اختر النوع:</p>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        {variants.map(v => (
+                                            <button
+                                                key={v.id}
+                                                type="button"
+                                                onClick={() => { setSelectedVariant(v); setVariantError(''); }}
+                                                style={{
+                                                    padding: '8px 14px',
+                                                    borderRadius: '10px',
+                                                    border: selectedVariant?.id === v.id ? '2px solid #ea580c' : '1.5px solid #e2e8f0',
+                                                    background: selectedVariant?.id === v.id ? '#fff7ed' : '#fff',
+                                                    color: selectedVariant?.id === v.id ? '#ea580c' : '#475569',
+                                                    fontWeight: 800,
+                                                    fontSize: '12px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                {v.name || v.title || v.sku || `نوع ${v.id.slice(0,4)}`} {v.price ? `- ${Number(v.price).toLocaleString()} ج.م` : ''}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {variantError && <p style={{ color: '#dc2626', fontSize: '11px', fontWeight: 700, marginTop: '6px' }}>{variantError}</p>}
+                                </div>
+                            )}
+                            {!isContactPrice ? (
                                 <>
                                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '4px' }}>
                                         <span style={{ fontSize: '42px', fontWeight: 900, color: '#0f172a', fontFamily: 'sans-serif', letterSpacing: '-0.03em' }}>
@@ -177,7 +226,7 @@ const ProductView = () => {
                                             </span>
                                         )}
                                     </div>
-                                    {hasDiscount && (
+                                    {hasDiscount && !selectedVariant && (
                                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 10px', background: '#fef2f2', borderRadius: '6px', marginBottom: '20px' }}>
                                             <span style={{ fontSize: '12px', fontWeight: 800, color: '#ef4444' }}>وفّر {product.discount}% 🎉</span>
                                         </div>
@@ -210,22 +259,23 @@ const ProductView = () => {
                                         {/* Add to Cart Button */}
                                         <button
                                             onClick={handleAddToCart}
-                                            disabled={isOutOfStock}
+                                            disabled={isOutOfStock || isContactPrice}
+                                            title={isContactPrice ? 'تواصل لمعرفة السعر' : ''}
                                             style={{
-                                                flex: 1, padding: '13px 20px', border: 'none', cursor: isOutOfStock ? 'not-allowed' : 'pointer',
-                                                background: addedToCart ? '#22c55e' : isOutOfStock ? '#cbd5e1' : 'linear-gradient(135deg, #ea580c, #f97316)',
+                                                flex: 1, padding: '13px 20px', border: 'none', cursor: (isOutOfStock || isContactPrice) ? 'not-allowed' : 'pointer',
+                                                background: addedToCart ? '#22c55e' : (isOutOfStock || isContactPrice) ? '#cbd5e1' : 'linear-gradient(135deg, #ea580c, #f97316)',
                                                 color: '#fff', borderRadius: '14px', fontWeight: 800, fontSize: '14px',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                                boxShadow: isOutOfStock ? 'none' : addedToCart ? '0 8px 20px rgba(34,197,94,0.3)' : '0 8px 20px rgba(234,88,12,0.3)',
+                                                boxShadow: (isOutOfStock || isContactPrice) ? 'none' : addedToCart ? '0 8px 20px rgba(34,197,94,0.3)' : '0 8px 20px rgba(234,88,12,0.3)',
                                                 transition: 'all 0.3s',
                                                 transform: 'scale(1)',
                                             }}
-                                            onMouseEnter={e => { if (!isOutOfStock && !addedToCart) e.currentTarget.style.transform = 'scale(1.02)'; }}
+                                            onMouseEnter={e => { if (!(isOutOfStock || isContactPrice) && !addedToCart) e.currentTarget.style.transform = 'scale(1.02)'; }}
                                             onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
                                         >
                                             {addedToCart
                                                 ? <><CheckCircle size={18} />تمت الإضافة!</>
-                                                : <><ShoppingCart size={18} />أضف للسلة</>
+                                                : isContactPrice ? <>تواصل لمعرفة السعر</> : <><ShoppingCart size={18} />أضف للسلة</>
                                             }
                                         </button>
                                     </div>
@@ -286,28 +336,11 @@ const ProductView = () => {
                 </div>
             </div>
 
-            {/* Responsive overrides */}
+            {/* Responsive: guarantee row wraps on mobile */}
             <style>{`
-                @media (max-width: 860px) {
-                    .pv-grid {
-                        grid-template-columns: 1fr !important;
-                        gap: 24px !important;
-                    }
-                    .pv-sticky {
-                        position: static !important;
-                    }
-                    .pv-guarantee-row {
-                        flex-wrap: wrap !important;
-                    }
-                    .pv-guarantee-row > div {
-                        flex: 1 1 calc(33% - 8px) !important;
-                        min-width: 90px !important;
-                    }
-                }
-                @media (max-width: 480px) {
-                    .pv-grid {
-                        gap: 16px !important;
-                    }
+                @media (max-width: 768px) {
+                    .pv-guarantee-row { flex-wrap: wrap !important; }
+                    .pv-guarantee-row > div { flex: 1 1 calc(33% - 8px) !important; min-width: 90px !important; }
                 }
             `}</style>
         </div>

@@ -1,39 +1,51 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getProducts } from '@/services/supabase/inventoryService';
 import { formatPrice, getDiscountedPrice, getOriginalPrice, hasDiscount as hasProductDiscount, getProductImage } from '@/utils/formatters';
+import { useCart } from '@/context/CartContext';
 import { Star, ShoppingBag, Eye } from 'lucide-react';
 import './FlashSale.css';
 
 const PLACEHOLDER_IMAGE = 'https://placehold.co/600x600/f1f5f9/94a3b8?text=%D8%A2%D9%84+%D9%85%D8%B3%D8%B9%D8%AF';
 
 export const ProductCard = ({ product }) => {
-    const [hovered, setHovered] = useState(false);
     const mainImage = getProductImage(product) || PLACEHOLDER_IMAGE;
+    const { addToCart } = useCart();
+    const [adding, setAdding] = useState(false);
 
     const isOutOfStock = product.stock_quantity === 0;
     const hasDiscount = hasProductDiscount(product);
     const discountedPrice = getDiscountedPrice(product);
     const originalPrice = getOriginalPrice(product);
+    const isContactPrice = discountedPrice === 0 && originalPrice === 0;
+
+    const handleAdd = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isOutOfStock || isContactPrice) return;
+        setAdding(true);
+        addToCart(product, 1);
+        setTimeout(() => setAdding(false), 900);
+    };
 
     return (
         <Link
             to={`/product/${product.id}`}
             className="pc-card"
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
             style={{ textDecoration: 'none' }}
+            aria-label={product.name}
         >
             {/* Image Area */}
             <div className="pc-img-wrap">
                 <img
                     src={mainImage}
                     alt={product.name}
-                    className={`pc-img ${hovered ? 'pc-img-zoom' : ''}`}
+                    className="pc-img"
+                    loading="lazy"
                 />
 
-                {/* Gradient Overlay on hover */}
-                <div className={`pc-overlay ${hovered ? 'pc-overlay-visible' : ''}`} />
+                {/* Gradient Overlay on hover - pure CSS */}
+                <div className="pc-overlay" />
 
                 {/* Badges top-right */}
                 <div className="pc-badges-right">
@@ -60,12 +72,18 @@ export const ProductCard = ({ product }) => {
                     </div>
                 )}
 
-                {/* Hover CTA bar */}
-                <div className={`pc-cta-bar ${hovered && !isOutOfStock ? 'pc-cta-visible' : ''}`}>
-                    <span className="pc-cta-inner">
+                {/* CTA bar - visible on hover via CSS; P-04: زر حقيقي */}
+                <div className="pc-cta-bar">
+                    <button
+                        type="button"
+                        onClick={handleAdd}
+                        disabled={isOutOfStock || isContactPrice}
+                        className="pc-cta-inner pc-cta-btn"
+                        aria-label={adding ? 'تمت الإضافة' : 'أضف للسلة'}
+                    >
                         <ShoppingBag size={15} />
-                        أضف للسلة
-                    </span>
+                        {adding ? 'تمت الإضافة' : 'أضف للسلة'}
+                    </button>
                     <span className="pc-cta-divider" />
                     <span className="pc-cta-inner">
                         <Eye size={15} />
@@ -79,7 +97,7 @@ export const ProductCard = ({ product }) => {
                 <p className="pc-cat-name">{product.categories?.name || 'آل مسعد'}</p>
                 <h3 className="pc-name">{product.name}</h3>
                 <div className="pc-price-row">
-                    {discountedPrice > 0 || originalPrice > 0 ? (
+                    {!isContactPrice ? (
                         <>
                             <span className="pc-price">
                                 {formatPrice(discountedPrice)}

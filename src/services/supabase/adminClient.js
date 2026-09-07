@@ -1,32 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://bbmnnvzuhjgrtbhksmel.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_sigZDu-zp-uioBSTzmwEBw_ajz7DscX';
-const isConfigured = !!(supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http'));
-
-// Create a safe client or a mock to prevent crashes
-const mockSupabase = {
-    auth: {
-        getUser: async () => ({ data: { user: null }, error: null }),
-        getSession: async () => ({ data: { session: null }, error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } })
-    },
-    from: () => {
-        const chain = {
-            select: () => chain,
-            eq: () => chain,
-            order: () => chain,
-            limit: () => chain,
-            single: async () => ({ data: null, error: null }),
-            then: (onfulfilled) => Promise.resolve({ data: [], error: null, count: 0 }).then(onfulfilled)
-        };
-        return chain;
-    }
-};
-
-export const supabase = isConfigured
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : mockSupabase;
+// Re-export canonical supabase client to avoid duplicate instances (S-02)
+// All app code should import from @/supabaseClient as single source of truth
+export { supabase } from '@/supabaseClient';
 
 /**
  * Utility to check if the current user has an admin role.

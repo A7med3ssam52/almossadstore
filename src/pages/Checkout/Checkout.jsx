@@ -4,17 +4,23 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { supabase } from '../../supabaseClient';
 import { validateCoupon, calculateDiscount, incrementCouponUsage } from '@/services/supabase/couponService';
+import { getDiscountedPrice } from '@/utils/formatters';
 import { ChevronRight, MapPin, Phone, User, CheckCircle2, ShieldCheck, Loader2, Ticket, X, Check } from 'lucide-react';
 
 const Checkout = () => {
-    const { cartItems, subtotal, clearCart } = useCart();
+    const {
+        cartItems, subtotal, discountAmount, totalAmount,
+        coupon, couponCode, setCouponCode, couponError, setCouponError, couponLoading, applyCoupon, removeCoupon,
+        clearCart, isHydrated, isSyncing
+    } = useCart();
     const navigate = useNavigate();
-    
+
     const [user, setUser] = useState(null);
     const [loadingAuth, setLoadingAuth] = useState(true);
     const [placingOrder, setPlacingOrder] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
-    
+    const [fieldErrors, setFieldErrors] = useState({});
+
     const [form, setForm] = useState({
         fullName: '',
         phone: '',
@@ -24,15 +30,14 @@ const Checkout = () => {
         notes: ''
     });
 
-    // Coupon state
-    const [couponCode, setCouponCode] = useState('');
-    const [coupon, setCoupon] = useState(null);
-    const [couponError, setCouponError] = useState('');
-    const [couponLoading, setCouponLoading] = useState(false);
+    // Local input for coupon to allow typing without immediately syncing context code
+    const [localCouponInput, setLocalCouponInput] = useState(couponCode || '');
+    useEffect(() => { setLocalCouponInput(couponCode || ''); }, [couponCode]);
 
-    const discountAmount = coupon ? calculateDiscount(subtotal, coupon) : 0;
     const shippingCost = 0;
-    const totalAmount = Math.max(0, subtotal - discountAmount + shippingCost);
+    // total already from context includes discount; keep shipping 0
+    const displayTotal = totalAmount + shippingCost;
+    const couponApplied = !!coupon;
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -40,64 +45,142 @@ const Checkout = () => {
             setUser(session?.user || null);
             setLoadingAuth(false);
         };
+        checkAuth();
+    }, []);
+
+    // C-CART-03: انتظار hydration قبل اتخاذ قرار السلة الفارغة
+    useEffect(() => {
+        if (!isHydrated || isSyncing) return;
         if (cartItems.length === 0) {
             navigate('/catalog');
-            return;
         }
-        checkAuth();
-    }, [navigate, cartItems.length]);
+    }, [navigate, cartItems.length, isHydrated, isSyncing]);
 
     const handleInputChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setForm({ ...form, [name]: value });
         if (errorMsg) setErrorMsg('');
+        if (fieldErrors[name]) setFieldErrors(prev => ({ ...prev, [name]: '' }));
     };
 
     const handleApplyCoupon = async () => {
-        setCouponError('');
-        if (!couponCode.trim()) { setCouponError('أدخل كود الكوبون'); return; }
-        setCouponLoading(true);
-        const res = await validateCoupon(couponCode);
-        if (res.valid) {
-            setCoupon(res.coupon);
-            setCouponError('');
-        } else {
-            setCoupon(null);
-            setCouponError(res.error);
+        const code = (localCouponInput || '').trim();
+        if (!code) { setCouponError('أدخل كود الكوبون'); return; }
+        if (couponApplied) { setCouponError('تم تطبيق كوبون بالفعل'); return; }
+        const res = await applyCoupon(code);
+        if (!res.valid) {
+            // error already set in context
         }
-        setCouponLoading(false);
     };
-    const handleRemoveCoupon = () => { setCoupon(null); setCouponCode(''); setCouponError(''); };
+    const handleRemoveCoupon = () => { removeCoupon(); setLocalCouponInput(''); };
 
     const validateForm = () => {
-        if (!form.fullName.trim() || form.fullName.trim().length < 3) { setErrorMsg('الاسم يجب أن يكون 3 أحرف على الأقل'); return false; }
+        const errs = {};
+        if (!form.fullName.trim() || form.fullName.trim().length < 3) errs.fullName = 'الاسم يجب أن يكون 3 أحرف على الأقل';
         const phoneDigits = form.phone.replace(/\D/g,'');
-        if (phoneDigits.length < 10 || phoneDigits.length > 15) { setErrorMsg('رقم الهاتف غير صحيح (10-15 رقم)'); return false; }
-        if (!form.city) { setErrorMsg('اختر المدينة'); return false; }
-        if (form.city === 'مدينة أخرى' && !form.otherCity.trim()) { setErrorMsg('حدد المدينة'); return false; }
-        if (form.city === 'مدينة أخرى' && form.otherCity.trim().length < 2) { setErrorMsg('اسم المدينة غير صحيح'); return false; }
-        if (!form.address.trim() || form.address.trim().length < 8) { setErrorMsg('العنوان يجب أن يكون 8 أحرف على الأقل'); return false; }
-        // stock check before submit
-        for (const item of cartItems) {
-            if (item.stock_quantity !== undefined && item.quantity > item.stock_quantity) {
-                setErrorMsg(`الكمية المطلوبة لـ ${item.name} غير متوفرة (المتاح: ${item.stock_quantity})`);
-                return false;
-            }
+        if (phoneDigits.length < 10 || phoneDigits.length > 15) errs.phone = 'رقم الهاتف غير صحيح (10-15 رقم)';
+        if (!form.city) errs.city = 'اختر المدينة';
+        if (form.city === 'مدينة أخرى' && !form.otherCity.trim()) errs.otherCity = 'حدد المدينة';
+        if (form.city === 'مدينة أخرى' && form.otherCity.trim().length < 2) errs.otherCity = 'اسم المدينة غير صحيح';
+        if (!form.address.trim() || form.address.trim().length < 8) errs.address = 'العنوان يجب أن يكون 8 أحرف على الأقل';
+
+        if (Object.keys(errs).length > 0) {
+            setFieldErrors(errs);
+            // C-CHK-06: رسائل حقلية بدل رسالة عامة
+            const first = Object.values(errs)[0];
+            setErrorMsg(first);
+            return false;
         }
+        setFieldErrors({});
         return true;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrorMsg('');
+        // C-CART-03: منع الطلب قبل اكتمال hydration
+        if (!isHydrated) { setErrorMsg('جارٍ تحميل بيانات السلة، حاول مرة أخرى لحظات'); return; }
+        if (isSyncing) { setErrorMsg('جارٍ مزامنة السلة... انتظر لحظات'); return; }
+        if (cartItems.length === 0) { setErrorMsg('السلة فارغة'); navigate('/catalog'); return; }
         if (!validateForm()) return;
-        // prevent double submit if discount > subtotal
         if (coupon && discountAmount > subtotal) { setErrorMsg('الخصم أكبر من الإجمالي'); return; }
         setPlacingOrder(true);
 
         let createdOrderId = null;
         try {
+            // C-COUP-02 + C-COUP-06: إعادة validateCoupon قبل الدفع وحساب الخصم server-side
+            let freshCoupon = coupon;
+            if (coupon) {
+                const reval = await validateCoupon(coupon.code);
+                if (!reval.valid) {
+                    setCouponError(reval.error);
+                    removeCoupon();
+                    setErrorMsg(`الكوبون لم يعد صالحاً: ${reval.error}`);
+                    setPlacingOrder(false);
+                    return;
+                }
+                freshCoupon = reval.coupon;
+            }
+
+            // C-CART-06 + C-CHK-02 + C-CART-01: جلب stock حقيقي وأسعار حقيقية من السيرفر
+            const ids = cartItems.map(i => i.id);
+            let productsDB = [];
+            try {
+                const { data, error: prodErr } = await supabase.from('products').select('id, base_price, discount, price, sale_price, stock_quantity').in('id', ids);
+                if (prodErr) throw prodErr;
+                productsDB = data || [];
+            } catch(fetchErr){
+                console.warn('stock fetch failed, fallback to local check', fetchErr?.message);
+                // fallback: if fetch fails (offline), keep local check but warn
+                for (const item of cartItems) {
+                    if (item.stock_quantity !== undefined && item.quantity > item.stock_quantity) {
+                        throw new Error(`الكمية المطلوبة لـ ${item.name} غير متوفرة (المتاح: ${item.stock_quantity})`);
+                    }
+                }
+            }
+            const prodMap = new Map(productsDB.map(p => [p.id, p]));
+            // إذا نجح الجلب، تحقق دقيق
+            if (productsDB.length > 0) {
+                for (const item of cartItems) {
+                    const dbProd = prodMap.get(item.id);
+                    if (!dbProd) {
+                        throw new Error(`المنتج ${item.name} غير متوفر حالياً`);
+                    }
+                    const serverStock = dbProd.stock_quantity;
+                    if (serverStock != null && Number(item.quantity) > Number(serverStock)) {
+                        throw new Error(`الكمية المطلوبة لـ ${item.name} غير متوفرة (المتاح: ${serverStock})`);
+                    }
+                    // C-CART-01: كشف تلاعب السعر - لا نثق بسعر العميل
+                    const serverPrice = getDiscountedPrice(dbProd);
+                    if (Math.abs(serverPrice - Number(item.price)) > 0.01) {
+                        console.warn(`Price tamper detected for ${item.id}: client ${item.price} vs server ${serverPrice} - using server price`);
+                    }
+                }
+            }
+
+            // حساب الإجمالي بالأسعار الحقيقية (C-CART-01 + C-COUP-06)
+            let serverSubtotal = subtotal;
+            let serverTotal = displayTotal;
+            let serverDiscount = discountAmount;
+            let unitPrices = new Map(cartItems.map(i => [i.id, Number(i.price)||0]));
+            if (productsDB.length > 0) {
+                serverSubtotal = cartItems.reduce((acc, item) => {
+                    const dbProd = prodMap.get(item.id);
+                    const sp = dbProd ? getDiscountedPrice(dbProd) : Number(item.price) || 0;
+                    unitPrices.set(item.id, sp);
+                    return acc + sp * (Number(item.quantity) || 0);
+                }, 0);
+                serverDiscount = freshCoupon ? calculateDiscount(serverSubtotal, freshCoupon) : 0;
+                if (serverDiscount > serverSubtotal) serverDiscount = serverSubtotal;
+                serverTotal = Math.max(0, serverSubtotal - serverDiscount + shippingCost);
+            } else {
+                if (freshCoupon) {
+                    serverDiscount = calculateDiscount(serverSubtotal, freshCoupon);
+                    serverTotal = Math.max(0, serverSubtotal - serverDiscount + shippingCost);
+                }
+            }
+
             const resolvedCity = form.city === 'مدينة أخرى' ? form.otherCity.trim() : form.city;
-            // Prepare shipping_address as JSON string for backward compat + structured
             const shippingAddressPayload = JSON.stringify({
                 city: resolvedCity,
                 originalCity: form.city,
@@ -106,12 +189,11 @@ const Checkout = () => {
                 phone: form.phone,
                 name: form.fullName
             });
-            // Also keep legacy text for old readers: city - address
-            const legacyShippingText = `${resolvedCity} - ${form.address}`;
 
+            // C-CHK-01: تحسين error handling والـ rollback
             const { data, error } = await supabase.from('orders').insert({
                 user_id: user?.id || null,
-                total_amount: totalAmount,
+                total_amount: serverTotal,
                 status: 'pending',
                 customer_name: form.fullName,
                 shipping_address: shippingAddressPayload,
@@ -119,9 +201,9 @@ const Checkout = () => {
                 notes: form.notes,
                 payment_status: 'unpaid',
                 shipping_cost: shippingCost,
-                coupon_id: coupon?.id && !coupon.id.startsWith('mock-') ? coupon.id : null,
-                coupon_code: coupon?.code || null,
-                discount_amount: discountAmount
+                coupon_id: freshCoupon?.id && !String(freshCoupon.id).startsWith('mock-') ? freshCoupon.id : null,
+                coupon_code: freshCoupon?.code || null,
+                discount_amount: serverDiscount
             }).select().single();
 
             if (error) throw error;
@@ -131,31 +213,30 @@ const Checkout = () => {
                 order_id: data.id,
                 product_id: item.id,
                 quantity: item.quantity,
-                unit_price: item.price,
+                unit_price: unitPrices.get(item.id) ?? (Number(item.price) || 0),
                 options: item.options || {}
             }));
 
             const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
             if (itemsError) {
-                // rollback order if items failed (transaction simulation)
-                await supabase.from('orders').delete().eq('id', data.id);
-                throw itemsError;
+                // rollback order if items failed
+                try { await supabase.from('orders').delete().eq('id', data.id); } catch (rbErr) { console.error('rollback failed', rbErr); }
+                throw new Error(itemsError.message || 'فشل حفظ عناصر الطلب');
             }
 
-            // Decrement stock + increment coupon usage (best effort, non-blocking)
+            // Decrement stock + increment coupon usage (best effort)
             try {
                 for (const item of cartItems) {
                     if (item.id) {
                         await supabase.rpc('decrement_stock', { p_product_id: item.id, p_qty: item.quantity }).then(r=>{
                             if (r.error) throw r.error;
                         }).catch(async ()=> {
-                            // fallback direct update if rpc missing
                             const { data: prod } = await supabase.from('products').select('stock_quantity').eq('id', item.id).single();
                             if (prod) await supabase.from('products').update({ stock_quantity: Math.max(0, (prod.stock_quantity||0) - item.quantity) }).eq('id', item.id);
                         });
                     }
                 }
-                if (coupon?.id) await incrementCouponUsage(coupon.id);
+                if (freshCoupon?.id) await incrementCouponUsage(freshCoupon.id);
             } catch (stockErr) { console.warn('stock/coupon post-process failed', stockErr); }
 
             clearCart();
@@ -163,14 +244,17 @@ const Checkout = () => {
 
         } catch (error) {
             console.error('Error placing order:', error);
-            setErrorMsg(error.message || 'حدث خطأ أثناء إنشاء الطلب. حاول مرة أخرى.');
-            // if we created order but items failed and rollback also failed, at least inform
+            // C-CHK-06: رسائل أوضح
+            let msg = error.message || 'حدث خطأ أثناء إنشاء الطلب. حاول مرة أخرى.';
+            if (msg.includes('stock') || msg.includes('المتاح')) msg = msg;
+            else if (msg.includes('duplicate') || msg.includes('unique')) msg = 'حدث تعارض أثناء الحفظ، حاول مرة أخرى';
+            setErrorMsg(msg);
         } finally {
             setPlacingOrder(false);
         }
     };
 
-    if (loadingAuth) {
+    if (loadingAuth || !isHydrated) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
                 <Loader2 size={40} className="text-orange-600 animate-spin" />
@@ -178,8 +262,12 @@ const Checkout = () => {
         );
     }
 
-    const inputClasses = "w-full bg-slate-50 border border-slate-200/60 rounded-3xl px-5 py-4 text-slate-900 text-sm focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all placeholder:text-slate-400 font-medium";
+    const inputBase = "w-full bg-slate-50 border rounded-3xl px-5 py-4 text-slate-900 text-sm focus:outline-none focus:ring-4 focus:ring-orange-500/10 transition-all placeholder:text-slate-400 font-medium";
+    const inputNormal = "border-slate-200/60 focus:border-orange-500";
+    const inputError = "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-500/10";
     const labelClasses = "flex items-center gap-2 text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2 mr-1";
+
+    const fieldClass = (name) => `${inputBase} ${fieldErrors[name] ? inputError : inputNormal}`;
 
     return (
         <div className="min-h-screen bg-slate-50 pt-8 pb-24" dir="rtl">
@@ -208,11 +296,13 @@ const Checkout = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
                                         <label className={labelClasses}><User size={14}/> الاسم الكامل</label>
-                                        <input required name="fullName" value={form.fullName} onChange={handleInputChange} type="text" placeholder="مثال: أحمد محمد" className={inputClasses} />
+                                        <input required name="fullName" value={form.fullName} onChange={handleInputChange} type="text" placeholder="مثال: أحمد محمد" className={fieldClass('fullName')} aria-invalid={!!fieldErrors.fullName} />
+                                        {fieldErrors.fullName && <p className="text-xs font-bold text-red-600 mt-1 pr-1">{fieldErrors.fullName}</p>}
                                     </div>
                                     <div>
                                         <label className={labelClasses}><Phone size={14}/> رقم الهاتف</label>
-                                        <input required name="phone" value={form.phone} onChange={handleInputChange} type="tel" placeholder="01XXXXXXXXX" className={inputClasses} dir="ltr" pattern="[0-9+ ]{10,15}" />
+                                        <input required name="phone" value={form.phone} onChange={handleInputChange} type="tel" placeholder="01XXXXXXXXX" className={fieldClass('phone')} dir="ltr" pattern="[0-9+ ]{10,15}" aria-invalid={!!fieldErrors.phone} />
+                                        {fieldErrors.phone && <p className="text-xs font-bold text-red-600 mt-1 pr-1">{fieldErrors.phone}</p>}
                                     </div>
                                 </div>
                             </div>
@@ -225,7 +315,7 @@ const Checkout = () => {
                                 <div className="space-y-5">
                                     <div>
                                         <label className={labelClasses}><MapPin size={14}/> المدينة</label>
-                                        <select required name="city" value={form.city} onChange={handleInputChange} className={`${inputClasses} appearance-none`}>
+                                        <select required name="city" value={form.city} onChange={handleInputChange} className={`${fieldClass('city')} appearance-none`} aria-invalid={!!fieldErrors.city}>
                                             <option value="">اختر المدينة...</option>
                                             <option value="القاهرة">القاهرة</option>
                                             <option value="الجيزة">الجيزة</option>
@@ -235,6 +325,7 @@ const Checkout = () => {
                                             <option value="أسيوط">أسيوط</option>
                                             <option value="مدينة أخرى">مدينة أخرى</option>
                                         </select>
+                                        {fieldErrors.city && <p className="text-xs font-bold text-red-600 mt-1 pr-1">{fieldErrors.city}</p>}
                                     </div>
                                     {form.city === 'مدينة أخرى' && (
                                         <div className="animate-fade-in">
@@ -246,17 +337,20 @@ const Checkout = () => {
                                                 onChange={handleInputChange}
                                                 type="text"
                                                 placeholder="اكتب اسم مدينتك..."
-                                                className={inputClasses}
+                                                className={fieldClass('otherCity')}
+                                                aria-invalid={!!fieldErrors.otherCity}
                                             />
+                                            {fieldErrors.otherCity && <p className="text-xs font-bold text-red-600 mt-1 pr-1">{fieldErrors.otherCity}</p>}
                                         </div>
                                     )}
                                     <div>
                                         <label className={labelClasses}>العنوان التفصيلي</label>
-                                        <input required name="address" value={form.address} onChange={handleInputChange} type="text" placeholder="مثال: شارع 15، عمارة 3، شقة 12" className={inputClasses} />
+                                        <input required name="address" value={form.address} onChange={handleInputChange} type="text" placeholder="مثال: شارع 15، عمارة 3، شقة 12" className={fieldClass('address')} aria-invalid={!!fieldErrors.address} />
+                                        {fieldErrors.address && <p className="text-xs font-bold text-red-600 mt-1 pr-1">{fieldErrors.address}</p>}
                                     </div>
                                     <div>
                                         <label className={labelClasses}>ملاحظات (اختياري)</label>
-                                        <textarea name="notes" value={form.notes} onChange={handleInputChange} placeholder="أي ملاحظات إضافية..." className={`${inputClasses} resize-none h-24`} />
+                                        <textarea name="notes" value={form.notes} onChange={handleInputChange} placeholder="أي ملاحظات إضافية..." className={`${fieldClass('notes')} resize-none h-24`} />
                                     </div>
                                 </div>
                             </div>
@@ -279,13 +373,13 @@ const Checkout = () => {
                     </div>
 
                     <div className="lg:sticky lg:top-8 space-y-6">
-                        {/* Coupon */}
+                        {/* Coupon — متزامن مع السلة */}
                         <div className="p-6 bg-white border border-slate-200 rounded-[2rem] shadow-sm">
-                            <h3 className="text-sm font-black text-slate-900 mb-3 flex items-center gap-2"><Ticket size={16} className="text-orange-600"/> كود الخصم</h3>
+                            <h3 className="text-sm font-black text-slate-900 mb-3 flex items-center gap-2"><Ticket size={16} className="text-orange-600"/> كود الخصم {coupon && <span className="mr-auto text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-full">مُطبق من السلة</span>}</h3>
                             {!coupon ? (
                                 <div className="flex gap-2">
-                                    <input value={couponCode} onChange={e=>setCouponCode(e.target.value.toUpperCase())} placeholder="WELCOME20" className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-mono tracking-widest text-center uppercase focus:outline-none focus:ring-2 focus:ring-orange-500/20" />
-                                    <button type="button" onClick={handleApplyCoupon} disabled={couponLoading} className="px-5 py-3 bg-slate-900 text-white rounded-2xl text-sm font-bold hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2">
+                                    <input value={localCouponInput} onChange={e=>setLocalCouponInput(e.target.value.toUpperCase())} placeholder="WELCOME20" disabled={couponLoading} className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-mono tracking-widest text-center uppercase focus:outline-none focus:ring-2 focus:ring-orange-500/20 disabled:opacity-50" />
+                                    <button type="button" onClick={handleApplyCoupon} disabled={couponLoading || !localCouponInput.trim()} className="px-5 py-3 bg-slate-900 text-white rounded-2xl text-sm font-bold hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2">
                                         {couponLoading ? <Loader2 size={14} className="animate-spin"/> : <Check size={14}/>} تطبيق
                                     </button>
                                 </div>
@@ -333,14 +427,15 @@ const Checkout = () => {
                                 <div className="flex justify-between items-end pt-4 border-t border-slate-800">
                                     <span className="font-bold">الإجمالي</span>
                                     <div className="text-left">
-                                        <span className="text-3xl font-black">{totalAmount.toLocaleString()}</span>
+                                        <span className="text-3xl font-black">{displayTotal.toLocaleString()}</span>
                                         <span className="text-sm ml-1 text-slate-400 font-bold">ج.م</span>
                                     </div>
                                 </div>
                             </div>
-                            <button type="submit" form="checkout-form" disabled={placingOrder} className="w-full mt-8 py-4 bg-orange-600 hover:bg-orange-500 text-white rounded-[2rem] font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-orange-600/20 active:scale-95 disabled:opacity-50">
+                            <button type="submit" form="checkout-form" disabled={placingOrder || !isHydrated || isSyncing} className="w-full mt-8 py-4 bg-orange-600 hover:bg-orange-500 text-white rounded-[2rem] font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-orange-600/20 active:scale-95 disabled:opacity-50">
                                 {placingOrder ? <><Loader2 size={20} className="animate-spin" /> جارٍ تأكيد الطلب...</> : <><CheckCircle2 size={20} /> تأكيد الطلب</>}
                             </button>
+                            {!isHydrated && <p className="text-xs text-amber-400 text-center mt-3 font-bold">جارٍ تحميل السلة...</p>}
                             <div className="mt-6 flex items-center justify-center gap-2 text-xs font-bold text-slate-400">
                                 <ShieldCheck size={14} className="text-green-400" /> دفع آمن 100%
                             </div>

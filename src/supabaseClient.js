@@ -39,6 +39,7 @@ export const supabase = isConfigured
                 eq: () => chain,
                 or: () => chain,
                 ilike: () => chain,
+                in: () => chain,
                 order: () => chain,
                 limit: () => chain,
                 single: async () => ({ data: null, error: null }),
@@ -46,6 +47,7 @@ export const supabase = isConfigured
             };
             return chain;
         },
+        rpc: async () => ({ data: null, error: null }),
         storage: {
             from: () => ({
                 upload: async () => ({ error: null }),

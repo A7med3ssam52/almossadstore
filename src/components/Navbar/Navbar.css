@@ -94,9 +94,12 @@
     align-items: center;
 }
 
-/* ─── Highlighted "عروض وخصومات" ─────────────── */
+/* ─── Highlighted "المتجر" و "عروض وخصومات" ─────────────── */
 .nav-highlight .nav-link {
-    font-weight: 900;
+    font-weight: 700;
+    color: #ffffff;
+}
+.nav-highlight .nav-link:hover {
     color: var(--accent);
 }
 

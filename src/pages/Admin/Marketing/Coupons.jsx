@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Ticket, Plus, Trash2, Copy, Check, X, Calendar, Hash, RefreshCcw, Loader2 } from 'lucide-react';
-import { supabase } from '@/services/supabase/adminClient';
+import { supabase } from '@/supabaseClient';
 import Modal from '@/components/ui/Modal';
 
 const isConfigured = () => {
@@ -28,7 +28,11 @@ const CouponForm = ({ onClose, onSaved }) => {
         if (!form.code.trim()) { setErr('أدخل كود الكوبون'); return; }
         if (!val || val<=0) { setErr('قيمة الخصم غير صحيحة'); return; }
         if (form.discount_type==='percentage' && val>100) { setErr('النسبة لا تتجاوز 100%'); return; }
-        if (form.expiry_date && new Date(form.expiry_date) < new Date(new Date().toISOString().split('T')[0])) { setErr('تاريخ الانتهاء يجب أن يكون في المستقبل'); return; }
+        // C-COUP-07: استخدم نهاية اليوم للمقارنة
+        if (form.expiry_date) {
+            const expiryEnd = new Date(form.expiry_date.includes('T') ? form.expiry_date : `${form.expiry_date}T23:59:59`);
+            if (expiryEnd < new Date()) { setErr('تاريخ الانتهاء يجب أن يكون في المستقبل'); return; }
+        }
         if (form.usage_limit <1) { setErr('حد الاستخدام يجب أن يكون 1 على الأقل'); return; }
         setSaving(true);
         try {
@@ -38,12 +42,23 @@ const CouponForm = ({ onClose, onSaved }) => {
             if (error) throw error;
             onSaved('تم إنشاء الكوبون');
         } catch (e) {
-            setErr(e.message.includes('duplicate') ? 'الكود موجود مسبقاً' : e.message);
+            const msg = e.message || '';
+            if (msg.includes('duplicate') || msg.includes('already exists')) setErr('الكود موجود مسبقاً');
+            else if (msg.includes('row-level security') || msg.includes('permission') || msg.includes('policy')) setErr('ليس لديك صلاحية إنشاء كوبون – تأكد أن حسابك Admin');
+            else if (msg.includes('coupons') && msg.includes('does not exist')) setErr('جدول الكوبونات غير موجود – شغّل ملف 20260405_coupons.sql في Supabase');
+            else setErr(msg || 'فشل إنشاء الكوبون');
         }
         setSaving(false);
     };
 
-    const generateCode = () => setForm(f => ({ ...f, code: Math.random().toString(36).slice(2, 8).toUpperCase() }));
+    // تحسين توليد كود قوي (C-COUP-12? + generateCode)
+    const generateCode = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = '';
+        const rnd = (typeof crypto !== 'undefined' && crypto.getRandomValues) ? crypto.getRandomValues(new Uint8Array(6)) : Array.from({length:6}, ()=> Math.floor(Math.random()*32));
+        for (let i=0;i<6;i++) code += chars[rnd[i] % chars.length];
+        setForm(f => ({ ...f, code }));
+    };
 
     const inputClasses = "w-full bg-slate-50 border border-slate-200/60 rounded-3xl px-4 py-3.5 text-slate-900 text-sm focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all font-medium placeholder:text-slate-400";
     const labelClasses = "flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 mr-1";
@@ -116,8 +131,21 @@ const Coupons = () => {
         const { error } = await supabase.from('coupons').delete().eq('id', id);
         if (!error) { showToast('تم الحذف'); loadCoupons(); } else showToast(error.message, 'error');
     };
-    const isExpired = (dateStr) => dateStr && new Date(dateStr) < new Date(new Date().toISOString().split('T')[0]);
-    const isExhausted = (c) => c.used_count >= c.usage_limit;
+    const handleToggleActive = async (coupon) => {
+        if (!isConfigured() || String(coupon.id).startsWith('mock-')) {
+            setCoupons(prev=>prev.map(c=> c.id===coupon.id ? { ...c, is_active: !c.is_active } : c));
+            return;
+        }
+        const { error } = await supabase.from('coupons').update({ is_active: !coupon.is_active }).eq('id', coupon.id);
+        if (!error) { showToast(coupon.is_active ? 'تم إلغاء التفعيل' : 'تم التفعيل'); loadCoupons(); } else showToast(error.message, 'error');
+    };
+    // C-COUP-07: expiry at end of day
+    const isExpired = (dateStr) => {
+        if (!dateStr) return false;
+        const d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T23:59:59`);
+        return d < new Date();
+    };
+    const isExhausted = (c) => Number(c.used_count) >= Number(c.usage_limit);
 
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8" dir="rtl">
@@ -146,7 +174,14 @@ const Coupons = () => {
                             </div>
                             <div className="mt-4 mb-4"><div className="flex justify-between text-[10px] font-black text-slate-400 mb-2 uppercase"><span>الاستهلاك</span><span>{coupon.used_count} / {coupon.usage_limit}</span></div><div className="h-2 bg-slate-50 rounded-full overflow-hidden border border-slate-100/50"><motion.div initial={{ width: 0 }} animate={{ width: `${usagePercent}%` }} className={`h-full rounded-full ${usagePercent >= 90 ? 'bg-red-500' : usagePercent >= 60 ? 'bg-orange-500' : 'bg-slate-900'}`} /></div></div>
                             {coupon.expiry_date && <p className="text-[10px] text-slate-400 font-black mt-6 border-t border-slate-50 pt-4 flex items-center gap-2"><Calendar size={12} /> ينتهي: {new Date(coupon.expiry_date).toLocaleDateString('ar-SA')}</p>}
-                            <button onClick={() => handleDelete(coupon.id)} className="absolute top-4 left-4 p-2.5 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 border border-transparent hover:border-red-100"><Trash2 size={16} /></button>
+                            <div className="flex items-center gap-2 mt-4">
+                                <button onClick={() => handleToggleActive(coupon)} className={`flex-1 py-2 rounded-xl text-xs font-black border transition-colors ${coupon.is_active ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}>
+                                    {coupon.is_active ? 'نشط - إلغاء التفعيل' : 'غير نشط - تفعيل'}
+                                </button>
+                                <button onClick={() => handleDelete(coupon.id)} aria-label="حذف الكوبون" className="p-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl border border-slate-200 hover:border-red-100 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
                         </motion.div>
                     );
                 })}
