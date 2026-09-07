@@ -9,7 +9,9 @@ const isConfigured = () => {
 export const getOrders = async (filters = {}) => {
     if (!isConfigured()) return { data: [], error: null };
     try {
-        let q = supabase.from('orders').select('*, profiles(full_name)').order('created_at', { ascending: false });
+        // FIX: removed failing profiles(full_name) join – FK orders.user_id -> auth.users not profiles
+        // orders already stores customer_name + shipping_address JSON, so no join needed
+        let q = supabase.from('orders').select('*').order('created_at', { ascending: false });
         if (filters.status && filters.status !== 'all') q = q.eq('status', filters.status);
         const { data, error } = await q;
         if (error) throw error;
@@ -23,11 +25,19 @@ export const getOrders = async (filters = {}) => {
 export const getOrderById = async (id) => {
     if (!isConfigured()) return { data: null, error: null };
     try {
-        const { data, error } = await supabase.from('orders').select('*, profiles(full_name, id)').eq('id', id).single();
+        // FIX: removed profiles join (no FK) – use customer_name/shipping_address instead
+        const { data, error } = await supabase.from('orders').select('*').eq('id', id).single();
         if (error) throw error;
-        // Also fetch order_items with product info
+        // Also fetch order_items with product info (FK order_items.product_id -> products.id exists)
         const { data: items, error: itemsError } = await supabase.from('order_items').select('*, products(name, images, base_price)').eq('order_id', id);
         if (!itemsError) data.items = items || [];
+        // Optional: enrich with profile name if user_id present (best-effort, non-blocking)
+        if (data.user_id) {
+            try {
+                const { data: prof } = await supabase.from('profiles').select('full_name').eq('id', data.user_id).single();
+                if (prof?.full_name) data.profiles = prof;
+            } catch {}
+        }
         return { data, error: null };
     } catch (e) {
         console.error('getOrderById error:', e);

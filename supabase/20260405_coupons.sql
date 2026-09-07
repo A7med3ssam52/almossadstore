@@ -90,24 +90,50 @@ GRANT EXECUTE ON FUNCTION public.decrement_stock(UUID, INTEGER) TO anon, authent
 -- So we allow anon to SELECT guest orders (user_id IS NULL). This is minimal leak – they still need the UUID.
 DO $$
 BEGIN
+    -- Comprehensive guest orders RLS fix (anon checkout must work)
     DROP POLICY IF EXISTS "Guests can view guest orders" ON public.orders;
     CREATE POLICY "Guests can view guest orders" ON public.orders
-        FOR SELECT USING (user_id IS NULL);
+        FOR SELECT TO anon, authenticated USING (user_id IS NULL);
 
-    -- Also allow guest order_items insert via existence check – the above SELECT policy makes EXISTS work
-    -- Ensure grants for orders & order_items so anon can actually insert/select
-    -- (Grants are usually already present, but re-assert idempotently)
+    DROP POLICY IF EXISTS "Users can create own orders" ON public.orders;
+    CREATE POLICY "Users can create own orders" ON public.orders
+        FOR INSERT TO anon, authenticated WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+
+    DROP POLICY IF EXISTS "Anonymous can create guest orders" ON public.orders;
+    CREATE POLICY "Anonymous can create guest orders" ON public.orders
+        FOR INSERT TO anon WITH CHECK (user_id IS NULL);
+
+    -- Order items: allow anon to insert/view guest items
+    DROP POLICY IF EXISTS "Guests can view guest order items" ON public.order_items;
+    CREATE POLICY "Guests can view guest order items" ON public.order_items
+        FOR SELECT TO anon, authenticated USING (
+            EXISTS (SELECT 1 FROM public.orders WHERE id = order_items.order_id AND user_id IS NULL)
+        );
+
+    DROP POLICY IF EXISTS "Users can insert own order items" ON public.order_items;
+    CREATE POLICY "Users can insert own order items" ON public.order_items
+        FOR INSERT TO anon, authenticated WITH CHECK (
+            EXISTS (SELECT 1 FROM public.orders WHERE id = order_items.order_id AND (user_id = auth.uid() OR user_id IS NULL))
+        );
+
+    DROP POLICY IF EXISTS "Anonymous can insert guest order items" ON public.order_items;
+    CREATE POLICY "Anonymous can insert guest order items" ON public.order_items
+        FOR INSERT TO anon WITH CHECK (
+            EXISTS (SELECT 1 FROM public.orders WHERE id = order_items.order_id AND user_id IS NULL)
+        );
+
+    -- Ensure grants for orders & order_items so anon can actually insert/select/update
     BEGIN
-        GRANT SELECT, INSERT ON public.orders TO anon, authenticated;
-        GRANT SELECT, INSERT ON public.order_items TO anon, authenticated;
-        GRANT SELECT ON public.products TO anon, authenticated;
+        GRANT USAGE ON SCHEMA public TO anon, authenticated;
+        GRANT SELECT, INSERT, UPDATE, DELETE ON public.orders TO anon, authenticated, service_role;
+        GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_items TO anon, authenticated, service_role;
+        GRANT SELECT ON public.products TO anon, authenticated, service_role;
+        GRANT SELECT ON public.profiles TO anon, authenticated, service_role;
     EXCEPTION WHEN OTHERS THEN
         RAISE NOTICE 'grants for orders/order_items/products already configured or not needed';
     END;
 
-    -- Ensure coupons grants for anon SELECT already set above, but also ensure update grant for fallback path
-    -- (fallback update will still be blocked by RLS, but RPC is preferred; keep RLS strict)
-    RAISE NOTICE 'guest orders RLS + grants fixed';
+    RAISE NOTICE 'guest orders RLS + grants fixed (20260907)';
 END $$;
 
 -- 7. Fix orders.shipping_address to JSONB if still TEXT (idempotent helper)

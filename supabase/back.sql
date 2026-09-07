@@ -503,55 +503,93 @@ END $$;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 
+-- Grants are required even with RLS – without them queries return 0 rows or 42501
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.orders TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_items TO anon, authenticated, service_role;
+GRANT SELECT ON public.products TO anon, authenticated, service_role;
+GRANT SELECT ON public.profiles TO anon, authenticated, service_role;
+
 DO $$
 BEGIN
     -- ── Orders Policies ──
-    -- Users can view their own orders
+    -- Users can view their own orders (authenticated)
     DROP POLICY IF EXISTS "Users can view own orders" ON public.orders;
     CREATE POLICY "Users can view own orders" ON public.orders
-        FOR SELECT USING (auth.uid() = user_id);
+        FOR SELECT TO authenticated USING (auth.uid() = user_id);
 
-    -- Guests can view guest orders (needed for OrderSuccess & order_items EXISTS check)
+    -- Guests can view guest orders (anon + authenticated can see guest orders by UUID)
     DROP POLICY IF EXISTS "Guests can view guest orders" ON public.orders;
     CREATE POLICY "Guests can view guest orders" ON public.orders
-        FOR SELECT USING (user_id IS NULL);
+        FOR SELECT TO anon, authenticated USING (user_id IS NULL);
 
-    -- Users can insert their own orders (and guests can insert their own anonymous orders)
+    -- Users can insert own orders (including guest anonymous)
     DROP POLICY IF EXISTS "Users can create own orders" ON public.orders;
     CREATE POLICY "Users can create own orders" ON public.orders
-        FOR INSERT WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+        FOR INSERT TO anon, authenticated WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
 
-    -- Admins can view and manage all orders
+    -- Explicit anon guest insert (fallback if above TO clause was restrictive)
+    DROP POLICY IF EXISTS "Anonymous can create guest orders" ON public.orders;
+    CREATE POLICY "Anonymous can create guest orders" ON public.orders
+        FOR INSERT TO anon WITH CHECK (user_id IS NULL);
+
+    -- Admins can view and manage all orders (bypass RLS)
     DROP POLICY IF EXISTS "Admin full access to orders" ON public.orders;
     CREATE POLICY "Admin full access to orders" ON public.orders
-        FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+        FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+    -- Allow admin to update status via separate policy for anon edge (redundant safety)
+    -- (Admin policy above already covers UPDATE)
 
     -- ── Order Items Policies ──
-    -- Users can view items of their own orders
+    -- Users can view items of own orders
     DROP POLICY IF EXISTS "Users can view own order items" ON public.order_items;
     CREATE POLICY "Users can view own order items" ON public.order_items
-        FOR SELECT USING (
+        FOR SELECT TO authenticated USING (
             EXISTS (
                 SELECT 1 FROM public.orders
                 WHERE id = order_items.order_id AND user_id = auth.uid()
             )
         );
 
-    -- Users can insert items into their own orders
+    -- Guests can view guest order items (needed for order success & admin viewing guest orders)
+    DROP POLICY IF EXISTS "Guests can view guest order items" ON public.order_items;
+    CREATE POLICY "Guests can view guest order items" ON public.order_items
+        FOR SELECT TO anon, authenticated USING (
+            EXISTS (
+                SELECT 1 FROM public.orders
+                WHERE id = order_items.order_id AND user_id IS NULL
+            )
+        );
+
+    -- Users can insert items into own orders (including guest)
     DROP POLICY IF EXISTS "Users can insert own order items" ON public.order_items;
     CREATE POLICY "Users can insert own order items" ON public.order_items
-        FOR INSERT WITH CHECK (
+        FOR INSERT TO anon, authenticated WITH CHECK (
             EXISTS (
                 SELECT 1 FROM public.orders
                 WHERE id = order_items.order_id AND (user_id = auth.uid() OR user_id IS NULL)
             )
         );
 
+    -- Explicit anon guest order_items insert
+    DROP POLICY IF EXISTS "Anonymous can insert guest order items" ON public.order_items;
+    CREATE POLICY "Anonymous can insert guest order items" ON public.order_items
+        FOR INSERT TO anon WITH CHECK (
+            EXISTS (
+                SELECT 1 FROM public.orders
+                WHERE id = order_items.order_id AND user_id IS NULL
+            )
+        );
+
     -- Admins can view and manage all order items
     DROP POLICY IF EXISTS "Admin full access to order items" ON public.order_items;
     CREATE POLICY "Admin full access to order items" ON public.order_items
-        FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+        FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 END $$;
+
+-- Reload PostgREST schema cache
+NOTIFY pgrst, 'reload schema';
 
 -- ── 13b. Coupons linkage for orders (also in 20260405_coupons.sql – kept here for fresh installs) ──
 DO $$

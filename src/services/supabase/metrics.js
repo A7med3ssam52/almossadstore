@@ -18,9 +18,10 @@ export const getDashboardMetrics = async () => {
         if (salesError) throw salesError;
         const totalSales = salesData?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
 
-        // 2. Order counts
-        const { count: orderCount } = await supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', firstDayOfMonth).in('status', salesStatuses);
-        const { count: prevOrderCount } = await supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', firstDayPrevMonth).lte('created_at', lastDayPrevMonth).in('status', salesStatuses);
+        // 2. Order counts – FIX: count ALL new orders (including pending), not just salesStatuses
+        // Dashboard "طلبات جديدة" must reflect every order that appears in Admin/Orders
+        const { count: orderCount } = await supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', firstDayOfMonth).neq('status', 'cancelled');
+        const { count: prevOrderCount } = await supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', firstDayPrevMonth).lte('created_at', lastDayPrevMonth).neq('status', 'cancelled');
         const { data: prevSalesData } = await supabase.from('orders').select('total_amount').gte('created_at', firstDayPrevMonth).lte('created_at', lastDayPrevMonth).in('status', salesStatuses);
         const prevTotalSales = prevSalesData?.reduce((acc,c)=>acc+Number(c.total_amount),0)||0;
 
@@ -102,7 +103,7 @@ function getArabicDayName(dayIndex) {
 }
 
 export const getRecentOrders = async (limit = 5) => {
-    // Fix: column is user_id not customer_id, join profiles correctly
+    // FIX: removed failing profiles(full_name) join – no FK between orders and profiles
     const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -111,8 +112,7 @@ export const getRecentOrders = async (limit = 5) => {
       total_amount,
       status,
       created_at,
-      customer_name,
-      profiles ( full_name )
+      customer_name
     `)
         .order('created_at', { ascending: false })
         .limit(limit);
@@ -123,7 +123,7 @@ export const getRecentOrders = async (limit = 5) => {
     return data.map(order => ({
         id: `#ORD-${order.id.slice(0, 4).toUpperCase()}`,
         rawId: order.id,
-        customer: order.profiles?.full_name || order.customer_name || 'زبون',
+        customer: order.customer_name || 'زبون',
         total: `${Number(order.total_amount).toLocaleString()} ج.م`,
         status: order.status,
         time: formatArabicRelativeTime(new Date(order.created_at))
