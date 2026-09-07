@@ -27,20 +27,42 @@ import Offers from './pages/Offers';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 
-// Admin — Lazy loaded for isolation
-const AdminRoute = lazy(() => import('./components/Admin/AdminRoute'));
-const AdminLayout = lazy(() => import('./components/Admin/Layout/AdminLayout'));
-const AdminDashboard = lazy(() => import('./pages/Admin/Dashboard'));
-const AdminProducts = lazy(() => import('./pages/Admin/Catalog/Products'));
-const AdminCategories = lazy(() => import('./pages/Admin/Catalog/Categories'));
-const AdminOrderList = lazy(() => import('./pages/Admin/Orders/OrderList'));
-const AdminOrderDetail = lazy(() => import('./pages/Admin/Orders/OrderDetail'));
-const AdminBanners = lazy(() => import('./pages/Admin/Editor/Banners'));
-const AdminAnnouncement = lazy(() => import('./pages/Admin/Editor/Announcement'));
-const AdminHomeLayout = lazy(() => import('./pages/Admin/Editor/HomeLayout'));
-const AdminCoupons = lazy(() => import('./pages/Admin/Marketing/Coupons'));
-const AdminSettings = lazy(() => import('./pages/Admin/Settings/GeneralSettings'));
-const AdminStaff = lazy(() => import('./pages/Admin/Settings/Staff'));
+// Admin — Lazy loaded with retry for stale chunk after deploy (fixes Coupons-B6BT1yjJ.js etc)
+const lazyWithRetry = (importFn) => lazy(async () => {
+  try {
+    return await importFn();
+  } catch (err) {
+    const msg = (err?.message || '').toLowerCase();
+    const isChunk = msg.includes('failed to fetch dynamically imported module') || msg.includes('loading chunk') || msg.includes('chunkloaderror');
+    if (isChunk) {
+      const key = 'chunk-retry-' + (importFn.toString().slice(0, 50));
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        // cache-bust reload
+        const url = new URL(window.location.href);
+        url.searchParams.set('_r', String(Date.now()));
+        window.location.replace(url.toString());
+        // prevent further throw until reload
+        return new Promise(() => {});
+      }
+    }
+    throw err;
+  }
+});
+
+const AdminRoute = lazyWithRetry(() => import('./components/Admin/AdminRoute'));
+const AdminLayout = lazyWithRetry(() => import('./components/Admin/Layout/AdminLayout'));
+const AdminDashboard = lazyWithRetry(() => import('./pages/Admin/Dashboard'));
+const AdminProducts = lazyWithRetry(() => import('./pages/Admin/Catalog/Products'));
+const AdminCategories = lazyWithRetry(() => import('./pages/Admin/Catalog/Categories'));
+const AdminOrderList = lazyWithRetry(() => import('./pages/Admin/Orders/OrderList'));
+const AdminOrderDetail = lazyWithRetry(() => import('./pages/Admin/Orders/OrderDetail'));
+const AdminBanners = lazyWithRetry(() => import('./pages/Admin/Editor/Banners'));
+const AdminAnnouncement = lazyWithRetry(() => import('./pages/Admin/Editor/Announcement'));
+const AdminHomeLayout = lazyWithRetry(() => import('./pages/Admin/Editor/HomeLayout'));
+const AdminCoupons = lazyWithRetry(() => import('./pages/Admin/Marketing/Coupons'));
+const AdminSettings = lazyWithRetry(() => import('./pages/Admin/Settings/GeneralSettings'));
+const AdminStaff = lazyWithRetry(() => import('./pages/Admin/Settings/Staff'));
 
 import NotFound from './pages/NotFound/NotFound';
 import CreateAccount from './pages/Admin/CreateAccount/CreateAccount';
