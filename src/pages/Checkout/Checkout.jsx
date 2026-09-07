@@ -262,9 +262,9 @@ const Checkout = () => {
         );
     }
 
-    const inputBase = "w-full bg-slate-50 border rounded-3xl px-5 py-4 text-slate-900 text-sm focus:outline-none focus:ring-4 focus:ring-orange-500/10 transition-all placeholder:text-slate-400 font-medium";
-    const inputNormal = "border-slate-200/60 focus:border-orange-500";
-    const inputError = "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-500/10";
+    const inputBase = "w-full bg-white border rounded-2xl px-5 py-3.5 text-slate-900 text-sm focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-300 transition-all duration-300 placeholder:text-slate-400 font-medium shadow-sm";
+    const inputNormal = "border-slate-200 focus:border-orange-300";
+    const inputError = "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-500/10 shadow-sm";
     const labelClasses = "flex items-center gap-2 text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2 mr-1";
 
     const fieldClass = (name) => `${inputBase} ${fieldErrors[name] ? inputError : inputNormal}`;
@@ -287,7 +287,7 @@ const Checkout = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     <div className="lg:col-span-2 space-y-6">
-                        <form id="checkout-form" onSubmit={handleSubmit} className="p-8 bg-white border border-slate-100 shadow-xl shadow-slate-900/5 rounded-[2.5rem] space-y-8">
+                        <form id="checkout-form" onSubmit={handleSubmit} className="p-8 bg-white border border-slate-200 shadow-lg shadow-slate-900/5 rounded-3xl space-y-8">
                             <div>
                                 <h2 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-sm">1</div>

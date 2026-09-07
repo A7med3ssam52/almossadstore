@@ -153,7 +153,7 @@ const ProductForm = ({ product, categories, onClose, onSaved, onRefreshCategorie
         ];
     };
 
-    const inputClasses = "w-full bg-slate-100/60 border-transparent rounded-[1.25rem] px-8 py-4 text-slate-900 text-sm focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:bg-white transition-all duration-500 placeholder:text-slate-400 font-medium shadow-inner active:scale-[0.99]";
+    const inputClasses = "w-full bg-white border border-slate-200 rounded-2xl px-6 py-3.5 text-slate-900 text-sm focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-300 focus:bg-white transition-all duration-300 placeholder:text-slate-400 font-medium shadow-sm";
     const labelClasses = "flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 mr-1";
 
     return (
@@ -192,7 +192,7 @@ const ProductForm = ({ product, categories, onClose, onSaved, onRefreshCategorie
                 </div>
 
                 {/* Pricing & Stock Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-6 bg-slate-50/30 rounded-[2.5rem] border border-slate-100/50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-6 bg-slate-50/40 rounded-3xl border border-slate-200/60 shadow-sm">
                     <div>
                         <label className={labelClasses}>
                             <DollarSign size={12} className="text-green-600" /> السعر الأساسي
@@ -255,7 +255,7 @@ const ProductForm = ({ product, categories, onClose, onSaved, onRefreshCategorie
                             <button
                                 type="button"
                                 onClick={() => setShowQuickAdd(!showQuickAdd)}
-                                className={`w-full bg-slate-100/60 rounded-[1.25rem] px-8 py-4 text-sm font-bold flex items-center justify-between transition-all border-2 ${showQuickAdd ? 'border-orange-200 bg-white shadow-sm' : 'border-transparent text-slate-500 hover:bg-white hover:border-slate-200'}`}
+                                className={`w-full bg-white border rounded-2xl px-6 py-3.5 text-sm font-bold flex items-center justify-between transition-all shadow-sm ${showQuickAdd ? 'border-orange-300 ring-4 ring-orange-500/10' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}
                             >
                                 <span>{form.category_ids.length > 0 ? `تم اختيار ${form.category_ids.length} تصنيف` : 'اختر التصنيف من القائمة...'}</span>
                                 <ChevronDown size={16} className={`transition-transform duration-300 ${showQuickAdd ? 'rotate-180' : ''}`} />
