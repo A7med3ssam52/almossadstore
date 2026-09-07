@@ -1,6 +1,5 @@
-// Re-export canonical supabase client to avoid duplicate instances (S-02)
-// All app code should import from @/supabaseClient as single source of truth
-export { supabase } from '@/supabaseClient';
+import { supabase } from '@/supabaseClient';
+export { supabase };
 
 /**
  * Utility to check if the current user has an admin role.

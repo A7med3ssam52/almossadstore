@@ -43,6 +43,9 @@ const StoryLogin = () => {
         setError(null);
         setSuccess(null);
         try {
+            if (!supabase || !supabase.auth || typeof supabase.auth.signInWithPassword !== 'function') {
+                throw new Error('supabase غير مُهيأ — تأكد من ملف .env و VITE_SUPABASE_URL');
+            }
             const { error: loginError } = await supabase.auth.signInWithPassword({
                 email: formData.email,
                 password: password,
@@ -57,23 +60,31 @@ const StoryLogin = () => {
                 event_type: ANALYTICS_EVENTS.STEP_COMPLETE,
                 path: '/login',
                 metadata: { success: true }
-            });
+            }).catch(()=>{});
 
             // Check if admin to redirect
-            const isAdmin = await checkIsAdmin();
-            
+            let isAdmin = false;
+            try { isAdmin = await checkIsAdmin(); } catch(e){ console.warn('checkIsAdmin failed', e); }
+
             setTimeout(() => {
                 window.dispatchEvent(new Event('auth:close'));
-                
-                // Use absolute redirect for admin to ensure a clean session state
                 if (isAdmin) {
                     window.location.href = '/admin';
                 }
             }, 800);
-            
+
         } catch (err) {
             console.error('Login error:', err);
-            setError(err.message === 'Invalid login credentials' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : err.message);
+            const msg = err?.message || String(err);
+            if (msg.includes('supabase is not defined') || msg.includes('is not defined')) {
+                setError('خطأ تهيئة: supabase غير مُعرّف — تأكد من تحديث الصفحة (Ctrl+F5) وأن ملف .env موجود');
+            } else if (msg === 'Invalid login credentials') {
+                setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+            } else if (msg.includes('Supabase غير مُهيأ')) {
+                setError(msg + ' — شغّل المشروع بـ npm run dev وتأكد من VITE_SUPABASE_URL');
+            } else {
+                setError(msg);
+            }
         } finally {
             setLoading(false);
         }

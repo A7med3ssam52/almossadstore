@@ -27,8 +27,8 @@ export const supabase = isConfigured
             getSession: async () => ({ data: { session: null } }),
             getUser: async () => ({ data: { user: null }, error: null }),
             signOut: async () => ({ error: null }),
-            signInWithPassword: async () => ({ data: { user: null }, error: null }),
-            signUp: async () => ({ data: { user: null }, error: null })
+            signInWithPassword: async () => ({ data: { user: null }, error: { message: 'Supabase غير مُهيأ — تأكد من VITE_SUPABASE_URL في .env' } }),
+            signUp: async () => ({ data: { user: null }, error: { message: 'Supabase غير مُهيأ — تأكد من VITE_SUPABASE_URL في .env' } })
         },
         from: () => {
             const chain = {
@@ -42,16 +42,24 @@ export const supabase = isConfigured
                 in: () => chain,
                 order: () => chain,
                 limit: () => chain,
-                single: async () => ({ data: null, error: null }),
-                then: (onfulfilled) => Promise.resolve({ data: [], error: null, count: 0 }).then(onfulfilled)
+                single: async () => ({ data: null, error: { message: 'Supabase غير مُهيأ' } }),
+                then: (onfulfilled) => Promise.resolve({ data: [], error: { message: 'Supabase غير مُهيأ' }, count: 0 }).then(onfulfilled)
             };
             return chain;
         },
-        rpc: async () => ({ data: null, error: null }),
+        rpc: async () => ({ data: null, error: { message: 'Supabase غير مُهيأ' } }),
         storage: {
             from: () => ({
-                upload: async () => ({ error: null }),
+                upload: async () => ({ error: { message: 'Supabase غير مُهيأ' } }),
                 getPublicUrl: () => ({ data: { publicUrl: '' } })
             })
         }
     };
+
+// Expose for debugging and legacy global references (prevents "supabase is not defined" ReferenceError)
+if (typeof window !== 'undefined') {
+    // @ts-ignore
+    window.supabase = supabase;
+    // @ts-ignore
+    window._supabaseConfigured = isConfigured;
+}
